@@ -1,14 +1,9 @@
-// Copyright Epic Games, Inc. All Rights Reserved.
-
-#pragma once
+﻿#pragma once
 
 #include "CoreMinimal.h"
 #include "GameFramework/GameModeBase.h"
 #include "Zombiemaid69GameMode.generated.h"
 
-/**
- *  Simple GameMode for a first person game
- */
 UCLASS(abstract)
 class AZombiemaid69GameMode : public AGameModeBase
 {
@@ -16,6 +11,11 @@ class AZombiemaid69GameMode : public AGameModeBase
 
 public:
 	AZombiemaid69GameMode();
+
+	//보스 사망이 확정됐을 때 호출
+	//현재 스테이지의 중복 보상 방지하고 원종혈청 지급
+	UFUNCTION(BlueprintCallable, Category = "Stage")
+	void HandleBossCleared();
 };
 
 
