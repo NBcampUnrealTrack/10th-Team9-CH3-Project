@@ -1,6 +1,4 @@
-// Copyright Epic Games, Inc. All Rights Reserved.
-
-#pragma once
+﻿#pragma once
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
@@ -15,79 +13,96 @@ struct FInputActionValue;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
 
-/**
- *  A basic first person character
- */
 UCLASS(abstract)
 class AZombiemaid69Character : public ACharacter
 {
 	GENERATED_BODY()
 
-	/** Pawn mesh: first person view (arms; seen only by self) */
+	// 폰 메쉬 : 1인칭 시점
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
 	USkeletalMeshComponent* FirstPersonMesh;
 
-	/** First person camera */
+	// 1인칭 카메라
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
 	UCameraComponent* FirstPersonCameraComponent;
 
 protected:
 
-	/** Jump Input Action */
+	// 점프 입력 액션
 	UPROPERTY(EditAnywhere, Category ="Input")
 	UInputAction* JumpAction;
 
-	/** Move Input Action */
+	// 이동 입력 액션
 	UPROPERTY(EditAnywhere, Category ="Input")
 	UInputAction* MoveAction;
 
-	/** Look Input Action */
+	// 시점 둘러보기 입력 액션
 	UPROPERTY(EditAnywhere, Category ="Input")
 	class UInputAction* LookAction;
 
-	/** Mouse Look Input Action */
+	// 마우스 시점 입력 액션
 	UPROPERTY(EditAnywhere, Category ="Input")
 	class UInputAction* MouseLookAction;
+
+	// 달리기 입력 액션
+	UPROPERTY(EditAnywhere, Category = "Input")
+	class UInputAction* SprintAction;
+
+	// 기본 걷기 속도
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
+	float BaseWalkSpeed = 600.0f;
+
+	// 달리기 시 곱해줄 배율
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
+	float SprintSpeedMultiplier = 2.0f;
 	
 public:
 	AZombiemaid69Character();
 
 protected:
 
-	/** Called from Input Actions for movement input */
+	// 이동 입력을 처리하기 위해 IA에서 호출됨
 	void MoveInput(const FInputActionValue& Value);
 
-	/** Called from Input Actions for looking input */
+	// 시점 입력을 처리하기 위해 IA에서 호출됨
 	void LookInput(const FInputActionValue& Value);
 
-	/** Handles aim inputs from either controls or UI interfaces */
+	// 컨트롤러 또는 UI 인터페이스로부터 들어오는 조준(에임) 입력을 처리
 	UFUNCTION(BlueprintCallable, Category="Input")
 	virtual void DoAim(float Yaw, float Pitch);
 
-	/** Handles move inputs from either controls or UI interfaces */
+	// 컨트롤러 또는 UI 인터페이스로부터 들어오는 이동 입력을 처리
 	UFUNCTION(BlueprintCallable, Category="Input")
 	virtual void DoMove(float Right, float Forward);
 
-	/** Handles jump start inputs from either controls or UI interfaces */
+	// 컨트롤러 또는 UI 인터페이스로부터 들어오는 점프시작 입력을 처리
 	UFUNCTION(BlueprintCallable, Category="Input")
 	virtual void DoJumpStart();
 
-	/** Handles jump end inputs from either controls or UI interfaces */
+	// 컨트롤러 또는 UI 인터페이스로 부터 들어오는 점프 종료 입력을 처리
 	UFUNCTION(BlueprintCallable, Category="Input")
 	virtual void DoJumpEnd();
 
+	// 달리기 시작 입력을 처리
+	UFUNCTION(BlueprintCallable, Category = "Input")
+	virtual void DoSprintStart();
+
+	// 달리기 종료 입력을 처리
+	UFUNCTION(BlueprintCallable, Category = "Input")
+	virtual void DoSprintEnd();
+
 protected:
 
-	/** Set up input action bindings */
+	// 입력 액션 바인딩 처리
 	virtual void SetupPlayerInputComponent(UInputComponent* InputComponent) override;
 	
 
 public:
 
-	/** Returns the first person mesh **/
+	// 1인칭 메시를 반환
 	USkeletalMeshComponent* GetFirstPersonMesh() const { return FirstPersonMesh; }
 
-	/** Returns first person camera component **/
+	// 1인칭 카메라 컨포넌트 반환
 	UCameraComponent* GetFirstPersonCameraComponent() const { return FirstPersonCameraComponent; }
 
 };
