@@ -6,6 +6,7 @@
 #include "EnhancedInputComponent.h"
 #include "InputActionValue.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "StatsComponent.h"
 #include "Zombiemaid69.h"
 
 
@@ -47,6 +48,9 @@ AAPlayerCharacter::AAPlayerCharacter()
 
 	// 기본 걷기 속도 설정 및 적용
 	GetCharacterMovement()->MaxWalkSpeed = BaseWalkSpeed;
+
+	// 체력/스태미나/레벨 컴포넌트 생성 및 부착
+	StatsComponent = CreateDefaultSubobject<UStatsComponent>(TEXT("StatsComponent"));
 }
 
 void AAPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -103,6 +107,14 @@ void AAPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 			ETriggerEvent::Completed,
 			this,
 			&AAPlayerCharacter::DoSprintEnd
+		);
+
+		// 디버그: 경험치 추가 (테스트용)
+		EnhancedInputComponent->BindAction(
+			DebugAddEXPAction,
+			ETriggerEvent::Started,
+			this,
+			&AAPlayerCharacter::DebugAddExperience
 		);
 	}
 	else
@@ -180,4 +192,37 @@ void AAPlayerCharacter::DoSprintStart()
 void AAPlayerCharacter::DoSprintEnd()
 {
 	GetCharacterMovement()->MaxWalkSpeed = BaseWalkSpeed;
+}
+
+// 레벨업 임시 테스트 함수 선언
+void AAPlayerCharacter::DebugAddExperience()
+{
+	UE_LOG(LogTemp, Warning, TEXT("DebugAddExperience 함수 진입"));
+
+	if (StatsComponent)
+	{
+		StatsComponent->AddExperience(50.0f);
+
+		UE_LOG(LogTemp, Warning, TEXT("현재 레벨: %d, 현재 경험치: %f / %f"),
+			StatsComponent->CurrentLevel,
+			StatsComponent->CurrentEXP,
+			StatsComponent->EXPToNextLevel
+		);
+
+		UE_LOG(LogTemp, Warning, TEXT("체력: %.1f / %.1f (%.0f%%)"),
+			StatsComponent->CurrentHealth,
+			StatsComponent->MaxHealth,
+			StatsComponent->GetHealthPercent() * 100.0f
+		);
+
+		UE_LOG(LogTemp, Warning, TEXT("스태미나: %.1f / %.1f (%.0f%%)"),
+			StatsComponent->CurrentStamina,
+			StatsComponent->MaxStamina,
+			StatsComponent->GetStaminaPercent() * 100.0f
+		);
+	}
+	else
+	{
+		UE_LOG(LogTemp, Error, TEXT("StatsComponent가 nullptr입니다!"));
+	}
 }
