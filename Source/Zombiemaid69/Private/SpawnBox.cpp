@@ -15,6 +15,18 @@ ASpawnBox::ASpawnBox()
     SpawnPointBox->SetupAttachment(Scene);
 }
 
+void ASpawnBox::BeginPlay()
+{
+    Super::BeginPlay();
+
+    FVector TestPoint = GetRandomPointInVolume();
+
+    // 테스트 스폰박스 작동 유무 확인
+    UE_LOG(LogTemp, Warning, TEXT("SpawnBox 테스트"));
+    // 박스영역을 다르게 했을 때 랜덤 좌표로 스폰 되는지 확인용도
+    UE_LOG(LogTemp, Warning, TEXT("랜덤 스폰 위치: %s"), *TestPoint.ToString());
+}
+
 
 FVector ASpawnBox::GetRandomPointInVolume() const
 {

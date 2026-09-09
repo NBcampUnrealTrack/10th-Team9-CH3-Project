@@ -5,7 +5,7 @@
 #include "SpawnBox.generated.h"
 
 class UBoxComponent;
-// 임시 class AZombieAI (나중에 스폰할 적 AI 함수 TSubclassOf<AZombieAI> 이름 정해지면 교체하면 사용가능)
+// 임시 class AEnemy; (나중에 스폰할 적 AI 함수 TSubclassOf<AZombieAI> 이름 정해지면 교체하면 사용가능) "변경완료"
 
 UCLASS()
 class ZOMBIEMAID69_API ASpawnBox : public AActor
@@ -26,13 +26,20 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Spawn")
 	FVector GetRandomPointInVolume() const;
 
+protected:
+	virtual void BeginPlay() override;
+
 };
 	//------------------------------나중에 수정하면 됨---------------------------------------
 
 	// 스폰할 적 AI 함수
 	// UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Spawn")
-	// 임시 <AZombieAI>를 부모로 하는 클래스 중에서 선택해서 넣을 수 있는 (나중에 C++ 클래스 정해지면 이름만 교체하면 사용가능)
-	// TSubclassOf<AZombieAI> EnemyClass;
+	// 임시 <AZombieAI>를 부모로 하는 클래스 중에서 선택해서 넣을 수 있는 (나중에 C++ 클래스 정해지면 이름만 교체하면 사용가능) "변경완료"
+	// TSubclassOf<AEnemy> EnemyClass;
+
+	// 스폰할 수 있는 적 AI 클래스 목록 <이건 고민중임>
+	// UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Spawn")
+	// TArray<TSubclassOf<AEnemy>> EnemyClasses;
 
 	// 생성할 적의 수 함수
 	// UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Spawn")
@@ -42,3 +49,5 @@ public:
 	// 적 AI 생성 함수
 	// UFUNCTION(BlueprintCallable, Category = "Spawn")
 	// void SpawnEnemies();
+
+	
