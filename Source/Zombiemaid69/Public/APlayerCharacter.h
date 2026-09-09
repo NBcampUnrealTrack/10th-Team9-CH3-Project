@@ -10,6 +10,8 @@ class USkeletalMeshComponent;
 class UCameraComponent;
 class UInputAction;
 struct FInputActionValue;
+// 레벨업 로직
+class UStatsComponent;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
 
@@ -50,11 +52,16 @@ protected:
 
 	// 기본 걷기 속도
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
-	float BaseWalkSpeed = 600.0f;
+	float BaseWalkSpeed = 300.0f;
 
 	// 달리기 시 곱해줄 배율
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
-	float SprintSpeedMultiplier = 2.0f;
+	float SprintSpeedMultiplier = 1.5f;
+
+	// 체력/스태미나/레벨을 관리하는 컴포넌트
+	// meta = (AllowPrivateAccess = "true") : private로 선언을 했지만 블루프인트에서는 노출을 허용한다
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
+	class UStatsComponent* StatsComponent;
 
 public:
 	AAPlayerCharacter();
@@ -104,5 +111,17 @@ public:
 
 	// 1인칭 카메라 컨포넌트 반환
 	UCameraComponent* GetFirstPersonCameraComponent() const { return FirstPersonCameraComponent; }
+
+	// UI나 다른 클래스에서 이 컴포넌트에 접근할 수 있도록 하는 getter 함수 
+	UStatsComponent* GetStatsComponent() const { return StatsComponent; }
+
+protected:
+	// 디버그용 경험치 추가 Input Action
+	UPROPERTY(EditAnywhere, Category = "Debug")
+	UInputAction* DebugAddEXPAction;
+
+	// 디버그용 경험치 추가 함수
+	UFUNCTION(BlueprintCallable, Category = "Debug")
+	void DebugAddExperience();
 
 };
