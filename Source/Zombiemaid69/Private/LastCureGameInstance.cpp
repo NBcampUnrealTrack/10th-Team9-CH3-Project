@@ -1,6 +1,6 @@
-﻿#include "Zombiemaid69GameInstance.h"
+﻿#include "LastCureGameInstance.h"
 
-void UZombiemaid69GameInstance::AddOriginSerum(int32 Amount)
+void ULastCureGameInstance::AddOriginSerum(int32 Amount)
 {
 	//추가할 원종혈청 수량이 0 이하면 함수 종료
 	if (Amount <= 0)
@@ -13,7 +13,7 @@ void UZombiemaid69GameInstance::AddOriginSerum(int32 Amount)
 }
 
 //현재 원종혈청 수량 반환
-int32 UZombiemaid69GameInstance::GetOriginSerum() const
+int32 ULastCureGameInstance::GetOriginSerum() const
 {
 	return OriginSerum;
 }

@@ -2,10 +2,10 @@
 
 #include "CoreMinimal.h"
 #include "Engine/GameInstance.h"
-#include "Zombiemaid69GameInstance.generated.h"
+#include "LastCureGameInstance.generated.h"
 
 UCLASS()
-class ZOMBIEMAID69_API UZombiemaid69GameInstance : public UGameInstance
+class ZOMBIEMAID69_API ULastCureGameInstance : public UGameInstance
 {
 	GENERATED_BODY()
 	
