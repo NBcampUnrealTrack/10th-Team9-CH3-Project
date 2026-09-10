@@ -17,8 +17,33 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Stage")
 	void HandleBossCleared();
 
+	//일반 맵 처치대상 좀비 등록
+	UFUNCTION(BlueprintCallable, Category = "Stage")
+	void RegisterZombie(AActor* Zombie);
+
+	//등록된 좀비가 죽었을 때 호출
+	UFUNCTION(BlueprintCallable, Category = "Stage")
+	void HandleZombieDeath(AActor* Zombie);
+
+	//보스방에 입장할 수 있는 조건인지 반환
+	UFUNCTION(BlueprintPure, Category = "Stage")
+	bool CanEnterBossRoom() const;
+
+	//조건을 만족했을 때 해당 보스맵으로 이동
+	UFUNCTION(BlueprintCallable, Category = "Stage")
+	void EnterBossRoom();
 protected:
 	//해당 스테이지의 보스 처치 시 지급할 원종혈청 수량
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "SerumReward", meta = (ClampMin = "1"))//ClampMin->에디터에서 입력하는 최솟값을 1로 제한
 		int32 BossOriginSerumReward = 1;//기본 보상량 1개
+
+	// 일반맵의 좀비를 모두 처치했을 때 이동할 보스맵
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Stage")
+	TSoftObjectPtr<UWorld> BossLevel;
+
+
+private:
+	TSet<TWeakObjectPtr<AActor>> RemainingZombies;
+
+	bool bAllZombiesKilled = false;
 };
