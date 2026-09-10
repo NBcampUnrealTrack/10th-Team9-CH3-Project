@@ -1,6 +1,6 @@
 ﻿#include "Enemy.h"
-#include "GameFramework/CharacterMovementComponent.h"
 #include "EnemyAIController.h"
+#include "GameFramework/CharacterMovementComponent.h"
 
 AEnemy::AEnemy()
 {
@@ -16,6 +16,7 @@ AEnemy::AEnemy()
 	MaxHealth = 0.0f;
 	CurrentHealth = 0.0f;
 	AttackDamage = 0.0f;
+	AttackRange = 0.0f;
 	MoveSpeed = 0.0f;
 
 	//스테이트
@@ -26,6 +27,11 @@ AEnemy::AEnemy()
 	ExpReward = 1;
 }
 
+float AEnemy::GetAttackRange() const
+{
+	return AttackRange;
+}
+
 void AEnemy::BeginPlay()
 {
 	Super::BeginPlay();
@@ -33,6 +39,11 @@ void AEnemy::BeginPlay()
 	CurrentHealth = MaxHealth; // 시작 시 최대 체력에 맞춰 현재 체력을 설정
 
 	GetCharacterMovement()->MaxWalkSpeed = MoveSpeed; // 적의 이동 속도를 설정된 이동 속도에 맞게 적용
+
+	if (IdleMontage)
+	{
+		PlayAnimMontage(IdleMontage);
+	}
 }
 
 //받는 데미지
