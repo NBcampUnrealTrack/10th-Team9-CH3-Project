@@ -44,3 +44,38 @@ bool ULastCureGameInstance::IsVaccineCreated() const
 {
 	return bVaccineCreated;
 }
+
+void ULastCureGameInstance::AddSerum(int32 Amount)
+{
+	if (Amount <= 0)
+	{
+		return;
+	}
+	Serum += Amount;
+}
+
+int32 ULastCureGameInstance::GetSerum() const
+{
+	return Serum;
+}
+
+bool ULastCureGameInstance::CanAffordSerum(int32 Cost) const
+{
+	return Cost > 0 && Serum >= Cost;
+}
+
+bool ULastCureGameInstance::SpendSerum(int32 Cost)
+{
+	if (!CanAffordSerum(Cost))
+	{
+		return false;
+	}
+
+	Serum -= Cost;
+	return true;
+}
+
+void ULastCureGameInstance::ApplySerumDeathPenalty()
+{
+	Serum /= 2;
+}
