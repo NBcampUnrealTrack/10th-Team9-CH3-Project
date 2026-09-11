@@ -7,6 +7,8 @@
 #include "InputActionValue.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "StatsComponent.h"
+#include "CombatComponent.h"
+#include "Kismet/GameplayStatics.h"
 #include "Zombiemaid69.h"
 
 
@@ -51,6 +53,20 @@ AAPlayerCharacter::AAPlayerCharacter()
 
 	// 체력/스태미나/레벨 컴포넌트 생성 및 부착
 	StatsComponent = CreateDefaultSubobject<UStatsComponent>(TEXT("StatsComponent"));
+
+	// 전투(발사/재장전) 컴포넌트 생성
+	CombatComponent = CreateDefaultSubobject<UCombatComponent>(TEXT("CombatComponent"));
+}
+
+void AAPlayerCharacter::BeginPlay()
+{
+	Super::BeginPlay();
+
+	// 플레이어가 사망했을 때 HandlePlayerDeath()가 자동 호출되도록 델리게이트 구독
+	if (StatsComponent)
+	{
+		StatsComponent->OnDeath.AddDynamic(this, &AAPlayerCharacter::HandlePlayerDeath);
+	}
 }
 
 void AAPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -108,6 +124,12 @@ void AAPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 			this,
 			&AAPlayerCharacter::DoSprintEnd
 		);
+
+		// 좌클릭을 누르면 DoFire 호출
+		EnhancedInputComponent->BindAction(FireAction, ETriggerEvent::Started, this, &AAPlayerCharacter::DoFire);
+
+		// R키를 누르면 DoReload 호출
+		EnhancedInputComponent->BindAction(ReloadAction, ETriggerEvent::Started, this, &AAPlayerCharacter::DoReload);
 
 		// 디버그: 경험치 추가 (테스트용)
 		EnhancedInputComponent->BindAction(
@@ -192,6 +214,62 @@ void AAPlayerCharacter::DoSprintStart()
 void AAPlayerCharacter::DoSprintEnd()
 {
 	GetCharacterMovement()->MaxWalkSpeed = BaseWalkSpeed;
+}
+
+void AAPlayerCharacter::DoFire()
+{
+	// CombatComponent가 유효하면 발사 로직 위임
+	if (CombatComponent)
+	{
+		CombatComponent->Fire();
+	}
+}
+
+void AAPlayerCharacter::DoReload()
+{
+	// CombatComponent가 유효하면 재장전 로직 위임
+	if (CombatComponent)
+	{
+		CombatComponent->StartReload();
+	}
+}
+
+float AAPlayerCharacter::TakeDamage(
+	float DamageAmount,
+	FDamageEvent const& DamageEvent,
+	AController* EventInstigator,
+	AActor* DamageCauser)
+{
+	// 부모 클래스 처리 먼저 호출 (관례)
+	float ActualDamage = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
+
+	// StatsComponent가 유효하면 실제 체력 차감 로직 위임
+	if (StatsComponent)
+	{
+		StatsComponent->HandleDamage(ActualDamage, DamageCauser);
+	}
+
+	// 실제 적용된 데미지량을 반환 (엔진 표준 관례)
+	return ActualDamage;
+}
+
+void AAPlayerCharacter::HandlePlayerDeath()
+{
+	// 플레이어가 죽었을 때의 처리
+
+	// 더 이상 입력을 받지 않도록 이동/조작 비활성화
+	GetCharacterMovement()->DisableMovement();
+
+	// 컨트롤러와의 연결을 유지한 채 입력만 무시하고 싶다면 아래처럼 처리 가능
+	if (APlayerController* PC = Cast<APlayerController>(GetController()))
+	{
+		DisableInput(PC);
+	}
+
+	// 사망 UI(게임오버 화면)를 표시할 자리
+	// TODO: 사망 시 게임오버/리스폰 UI 위젯 생성 및 화면 표시 코드 추가 예정
+
+	UE_LOG(LogTemp, Warning, TEXT("플레이어 사망 처리됨"));
 }
 
 // 레벨업 임시 테스트 함수 선언

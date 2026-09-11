@@ -18,7 +18,8 @@ void UStatsComponent::BeginPlay()
 	// 게임 시작 시 현재 스태미나를 최대 스태미나로 초기화
 	CurrentStamina = MaxStamina;
 
-	// 경험치 초기 상태를 UI에 알림 (경험치 바를 0%로 표시하기 위함)
+	// 초기 체력/경험치 상태를 UI에 반영
+	OnHealthChanged.Broadcast(CurrentHealth, MaxHealth);
 	OnExperienceChanged.Broadcast(CurrentEXP, EXPToNextLevel);
 }
 
@@ -82,4 +83,30 @@ void UStatsComponent::ProcessLevelUp()
 	// 레벨업 이벤트를 브로드캐스트
 	// 구독하는 쪽(UI, 이펙트, 사운드 등)에서 새 레벨 값을 전달받아 연출 처리 가능
 	OnLevelUp.Broadcast(CurrentLevel);
+}
+
+void UStatsComponent::HandleDamage(float DamageAmount, AActor* DamageCauser)
+{
+	// 이미 죽은 상태라면 추가 데미지 처리를 하지 않음 (중복 사망 방지)
+	if (bIsDead)
+	{
+		return;
+	}
+
+	// 현재 체력에서 데미지만큼 차감, 0~MaxHealth 범위를 벗어나지 않도록 Clamp
+	CurrentHealth = FMath::Clamp(CurrentHealth - DamageAmount, 0.0f, MaxHealth);
+
+	// 체력 변경을 UI 등에 알림 (체력바 갱신용)
+	OnHealthChanged.Broadcast(CurrentHealth, MaxHealth);
+
+	// 체력이 0 이하가 되면 사망 처리
+	if (CurrentHealth <= 0.0f)
+	{
+		// 사망 상태로 전환 (중복 호출 방지)
+		bIsDead = true;
+
+		// 사망 이벤트를 브로드캐스트
+		// 이걸 구독하는 쪽(캐릭터/적 클래스)에서 사망 애니메이션, 입력 비활성화 등을 처리
+		OnDeath.Broadcast();
+	}
 }

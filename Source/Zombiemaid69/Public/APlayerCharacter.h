@@ -20,107 +20,142 @@ class ZOMBIEMAID69_API AAPlayerCharacter : public ACharacter
 {
 	GENERATED_BODY()
 
-	// 폰 메쉬 : 1인칭 시점
+	/** 폰 메쉬 : 1인칭 시점 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
 	USkeletalMeshComponent* FirstPersonMesh;
 
-	// 1인칭 카메라
+	/** 1인칭 카메라 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
 	UCameraComponent* FirstPersonCameraComponent;
 
 protected:
 
-	// 점프 입력 액션
+	/** 점프 입력 액션 */
 	UPROPERTY(EditAnywhere, Category = "Input")
 	UInputAction* JumpAction;
 
-	// 이동 입력 액션
+	/** 이동 입력 액션 */
 	UPROPERTY(EditAnywhere, Category = "Input")
 	UInputAction* MoveAction;
 
-	// 시점 둘러보기 입력 액션
+	/** 시점 둘러보기 입력 액션 */
 	UPROPERTY(EditAnywhere, Category = "Input")
 	class UInputAction* LookAction;
 
-	// 마우스 시점 입력 액션
+	/** 마우스 시점 입력 액션 */
 	UPROPERTY(EditAnywhere, Category = "Input")
 	class UInputAction* MouseLookAction;
 
-	// 달리기 입력 액션
+	/** 달리기 입력 액션 */
 	UPROPERTY(EditAnywhere, Category = "Input")
 	class UInputAction* SprintAction;
 
-	// 기본 걷기 속도
+	/** 기본 걷기 속도 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
 	float BaseWalkSpeed = 300.0f;
 
-	// 달리기 시 곱해줄 배율
+	/** 달리기 시 곱해줄 배율 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
 	float SprintSpeedMultiplier = 1.5f;
 
-	// 체력/스태미나/레벨을 관리하는 컴포넌트
-	// meta = (AllowPrivateAccess = "true") : private로 선언을 했지만 블루프인트에서는 노출을 허용한다
+	/** 체력/스태미나/레벨을 관리하는 컴포넌트 */
+	/** meta = (AllowPrivateAccess = "true") : private로 선언을 했지만 블루프인트에서는 노출을 허용한다 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
 	class UStatsComponent* StatsComponent;
+
+	/** 발사 Input Action (좌클릭) */
+	UPROPERTY(EditAnywhere, Category = "Input")
+	UInputAction* FireAction;
+
+	/** 재장전 Input Action (R키) */
+	UPROPERTY(EditAnywhere, Category = "Input")
+	UInputAction* ReloadAction;
+
+	/** 전투(발사/재장전) 컴포넌트 */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
+	class UCombatComponent* CombatComponent;
 
 public:
 	AAPlayerCharacter();
 
 protected:
 
-	// 이동 입력을 처리하기 위해 IA에서 호출됨
+	/** 이동 입력을 처리하기 위해 IA에서 호출됨 */
 	void MoveInput(const FInputActionValue& Value);
 
-	// 시점 입력을 처리하기 위해 IA에서 호출됨
+	/** 시점 입력을 처리하기 위해 IA에서 호출됨 */
 	void LookInput(const FInputActionValue& Value);
 
-	// 컨트롤러 또는 UI 인터페이스로부터 들어오는 조준(에임) 입력을 처리
+	/** 컨트롤러 또는 UI 인터페이스로부터 들어오는 조준(에임) 입력을 처리 */
 	UFUNCTION(BlueprintCallable, Category = "Input")
 	virtual void DoAim(float Yaw, float Pitch);
 
-	// 컨트롤러 또는 UI 인터페이스로부터 들어오는 이동 입력을 처리
+	/** 컨트롤러 또는 UI 인터페이스로부터 들어오는 이동 입력을 처리 */
 	UFUNCTION(BlueprintCallable, Category = "Input")
 	virtual void DoMove(float Right, float Forward);
 
-	// 컨트롤러 또는 UI 인터페이스로부터 들어오는 점프시작 입력을 처리
+	/** 컨트롤러 또는 UI 인터페이스로부터 들어오는 점프시작 입력을 처리 */
 	UFUNCTION(BlueprintCallable, Category = "Input")
 	virtual void DoJumpStart();
 
-	// 컨트롤러 또는 UI 인터페이스로 부터 들어오는 점프 종료 입력을 처리
+	/** 컨트롤러 또는 UI 인터페이스로 부터 들어오는 점프 종료 입력을 처리 */
 	UFUNCTION(BlueprintCallable, Category = "Input")
 	virtual void DoJumpEnd();
 
-	// 달리기 시작 입력을 처리
+	/** 달리기 시작 입력을 처리 */
 	UFUNCTION(BlueprintCallable, Category = "Input")
 	virtual void DoSprintStart();
 
-	// 달리기 종료 입력을 처리
+	/** 달리기 종료 입력을 처리 */
 	UFUNCTION(BlueprintCallable, Category = "Input")
 	virtual void DoSprintEnd();
 
+	/** 좌클릭을 눌렀을 때 호출 (발사) */
+	UFUNCTION(BlueprintCallable, Category = "Combat")
+	virtual void DoFire();
+
+	/** R키를 눌렀을 때 호출 (재장전) */
+	UFUNCTION(BlueprintCallable, Category = "Combat")
+	virtual void DoReload();
+
+	/** StatsComponent의 OnDeath 델리게이트에 의해 자동 호출되는 사망 처리 콜백 */
+	UFUNCTION()
+	void HandlePlayerDeath();
+
+	virtual void BeginPlay() override;
+
 protected:
 
-	// 입력 액션 바인딩 처리
+	/** 입력 액션 바인딩 처리 */
 	virtual void SetupPlayerInputComponent(UInputComponent* InputComponent) override;
 
 
 public:
 
-	// 1인칭 메시를 반환
+	/** 언리얼 엔진이 데미지를 받을 때 자동으로 호출하는 함수 (오버라이드) */
+	virtual float TakeDamage(
+		float DamageAmount,
+		struct FDamageEvent const& DamageEvent,
+		AController* EventInstigator,
+		AActor* DamageCauser
+	) override;
+
+	/** 1인칭 메시를 반환 */
 	USkeletalMeshComponent* GetFirstPersonMesh() const { return FirstPersonMesh; }
 
-	// 1인칭 카메라 컨포넌트 반환
+	/** 1인칭 카메라 컨포넌트 반환 */
 	UCameraComponent* GetFirstPersonCameraComponent() const { return FirstPersonCameraComponent; }
 
-	// UI나 다른 클래스에서 이 컴포넌트에 접근할 수 있도록 하는 getter 함수 
+	/** 다른 클래스(UI 등)에서 컴포넌트에 접근할 수 있도록 getter 제공 */
 	UStatsComponent* GetStatsComponent() const { return StatsComponent; }
+	UCombatComponent* GetCombatComponent() const { return CombatComponent; }
 
 protected:
-	// 디버그용 경험치 추가 Input Action
+	/** 디버그용 경험치 추가 Input Action */
 	UPROPERTY(EditAnywhere, Category = "Debug")
 	UInputAction* DebugAddEXPAction;
 
-	// 디버그용 경험치 추가 함수
+	/** 디버그용 경험치 추가 함수 */
 	UFUNCTION(BlueprintCallable, Category = "Debug")
 	void DebugAddExperience();
 
