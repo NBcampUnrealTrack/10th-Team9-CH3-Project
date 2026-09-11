@@ -161,3 +161,22 @@ void ALastCureGameMode::EnterStage(TSoftObjectPtr<UWorld> StageLevel)
 	}
 	UGameplayStatics::OpenLevelBySoftObjectPtr(this, StageLevel);
 }
+
+void ALastCureGameMode::HandlePlayerDeath()
+{
+	//동일한 사망 처리가 다시 들어오면 무시
+	if (bPlayerDeathHandled)
+	{
+		return;
+	}
+
+	ULastCureGameInstance* GI =
+		Cast<ULastCureGameInstance>(GetGameInstance());
+
+	if (!GI)
+	{
+		return;
+	}
+	bPlayerDeathHandled = true;
+	GI->ApplySerumDeathPenalty();
+}

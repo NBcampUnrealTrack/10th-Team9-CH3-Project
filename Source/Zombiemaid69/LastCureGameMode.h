@@ -41,6 +41,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Stage")
 	void EnterStage(TSoftObjectPtr<UWorld> StageLevel);
 
+	//플레이어 사망 처리하고 혈청 패널티 적용
+	UFUNCTION(BlueprintCallable, Category = "Stage")
+	void HandlePlayerDeath();
+
 protected:
 	//해당 스테이지의 보스 처치 시 지급할 원종혈청 수량
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "SerumReward", meta = (ClampMin = "1"))//ClampMin->에디터에서 입력하는 최솟값을 1로 제한
@@ -59,4 +63,7 @@ private:
 	TSet<TWeakObjectPtr<AActor>> RemainingZombies;
 
 	bool bAllZombiesKilled = false;
+
+	//동일한 사망에서 패널티가 여러번 적용되는것을 방지
+	bool bPlayerDeathHandled = false;
 };
