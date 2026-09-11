@@ -5,7 +5,7 @@
 #include "LastCureGameMode.generated.h"
 
 UCLASS(abstract)
-class ALastCureGameMode : public AGameModeBase
+class ZOMBIEMAID69_API ALastCureGameMode : public AGameModeBase
 {
 	GENERATED_BODY()
 
@@ -32,6 +32,15 @@ public:
 	//조건을 만족했을 때 해당 보스맵으로 이동
 	UFUNCTION(BlueprintCallable, Category = "Stage")
 	void EnterBossRoom();
+
+	//현재 맵을 종료하고 연구실로 이동
+	UFUNCTION(BlueprintCallable, Category = "Stage")
+	void ReturnToLaboratory();
+
+	//연구실에서 선택한 일반 스테이지로 이동
+	UFUNCTION(BlueprintCallable, Category = "Stage")
+	void EnterStage(TSoftObjectPtr<UWorld> StageLevel);
+
 protected:
 	//해당 스테이지의 보스 처치 시 지급할 원종혈청 수량
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "SerumReward", meta = (ClampMin = "1"))//ClampMin->에디터에서 입력하는 최솟값을 1로 제한
@@ -40,6 +49,10 @@ protected:
 	// 일반맵의 좀비를 모두 처치했을 때 이동할 보스맵
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Stage")
 	TSoftObjectPtr<UWorld> BossLevel;
+
+	//보스 처치 또는 플레이어 사망 후 돌아갈 연구실 맵
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Stage")
+	TSoftObjectPtr<UWorld> LaboratoryLevel;
 
 
 private:

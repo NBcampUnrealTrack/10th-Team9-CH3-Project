@@ -15,7 +15,7 @@ public:
 	void AddOriginSerum(int32 Amount);
 
 	//현재 원종혈청 수량 조회하는 함수 
-	UFUNCTION(BlueprintCallable, Category = "Progress")
+	UFUNCTION(BlueprintPure, Category = "Progress")
 	int32 GetOriginSerum() const;
 
 private:

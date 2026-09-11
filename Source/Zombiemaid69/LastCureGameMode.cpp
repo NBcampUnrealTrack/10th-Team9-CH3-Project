@@ -91,10 +91,10 @@ void ALastCureGameMode::HandleZombieDeath(AActor* Zombie)
 	//제거 후 남은 좀비 수를 GameState에 반영
 	GS->SetRemainingZombieCount(RemainingZombies.Num());
 
-	//마지막 좀비를 처치했다면 해당 보스맵으로 이동
+	//마지막 좀비를 처치했다면 보스방 입장 가능 상태로 변경
 	if (RemainingZombies.Num() == 0)
 	{
-		//현재 맵 종료 후 보스맵으로 이동
+		//보스방 잠금 해제
 		bAllZombiesKilled = true;
 		UE_LOG(
 			LogTemp,
@@ -132,4 +132,32 @@ void ALastCureGameMode::EnterBossRoom()
 	}
 
 	UGameplayStatics::OpenLevelBySoftObjectPtr(this, BossLevel);//현재 맵을 종료하고 BossLevel로 설정된 맵을 불러옴
+}
+
+void ALastCureGameMode::ReturnToLaboratory()
+{
+	if (LaboratoryLevel.IsNull())
+	{
+		UE_LOG(
+			LogTemp,
+			Error,
+			TEXT("돌아갈 연구실 맵이 설정되지 않았습니다.")
+		);
+		return;
+	}
+	UGameplayStatics::OpenLevelBySoftObjectPtr(this, LaboratoryLevel);
+}
+
+void ALastCureGameMode::EnterStage(TSoftObjectPtr<UWorld> StageLevel)
+{
+	if (StageLevel.IsNull())
+	{
+		UE_LOG(
+			LogTemp,
+			Error,
+			TEXT("이동할 일반 스테이지가 설정되지 않았습니다.")
+		);
+		return;
+	}
+	UGameplayStatics::OpenLevelBySoftObjectPtr(this, StageLevel);
 }
