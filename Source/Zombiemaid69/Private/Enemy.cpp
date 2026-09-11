@@ -1,6 +1,8 @@
 ﻿#include "Enemy.h"
 #include "EnemyAIController.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "Kismet/GameplayStatics.h"
+#include "TimerManager.h"
 
 AEnemy::AEnemy()
 {
@@ -17,6 +19,7 @@ AEnemy::AEnemy()
 	CurrentHealth = 0.0f;
 	AttackDamage = 0.0f;
 	AttackRange = 0.0f;
+	AttackWidth = 0.0f;
 	MoveSpeed = 0.0f;
 
 	//스테이트
@@ -25,11 +28,6 @@ AEnemy::AEnemy()
 	//보상
 	SerumReward = 0;
 	ExpReward = 1;
-}
-
-float AEnemy::GetAttackRange() const
-{
-	return AttackRange;
 }
 
 void AEnemy::BeginPlay()
@@ -70,9 +68,44 @@ float AEnemy::TakeDamage(
 	if (CurrentHealth <= 0.0f) // 체력이 0 이하가 되면 사망 처리
 	{
 		Die();
+		return DamageAmount;
+	}
+	//현재 AIController 가져오기
+	AEnemyAIController* AIController = Cast <AEnemyAIController> (GetController());
+	if (AIController)
+	{
+		AActor* Attacker = nullptr;
+
+		//공격자의 Pawn 가져오기
+		if (EventInstigator)
+		{
+			Attacker = EventInstigator->GetPawn();
+		}
+		//공격자를 찾지 못하면 DamageCauser 사용
+		if (!Attacker)
+		{
+			Attacker = DamageCauser;
+		}
+		//공격자 추적 처리
+		AIController->OnEnemyDamaged(Attacker);
 	}
 
 	return DamageAmount;
+}
+
+float AEnemy::GetAttackRange() const
+{
+	return AttackRange;
+}
+
+float AEnemy::GetAttackDamage() const
+{
+	return AttackDamage;
+}
+
+float AEnemy::GetAttackWidth() const
+{
+	return AttackWidth;
 }
 
 //사망로직
@@ -84,6 +117,34 @@ void AEnemy::Die()
 	}
 
 	bIsDead = true; // 적을 사망 상태로 변경
-	//사망처리
+	
+	//현재 AIController 가져오기
+	AEnemyAIController* AIController = Cast<AEnemyAIController>(GetController());
+
+	//AI 사망처리
+	if (AIController)
+	{
+		AIController->OnEnemyDead();
+	}
+	//사망 애니메이션 재생
+	if (DeadMontage)
+	{
+		PlayAnimMontage(DeadMontage);
+	}
+
+	//3초 후 시체 제거
+	FTimerHandle DeadBodyTimer;
+	GetWorldTimerManager().SetTimer(
+		DeadBodyTimer,
+		this,
+		&AEnemy::RemoveDeadBody,
+		2.5f,
+		false
+	);
+}
+
+void AEnemy::RemoveDeadBody()
+{
+	Destroy();
 }
 

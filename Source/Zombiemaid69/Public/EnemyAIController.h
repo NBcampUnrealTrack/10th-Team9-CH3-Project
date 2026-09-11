@@ -8,7 +8,6 @@
 //AI Perception 관련 클래스의 전방 선언
 class UAIPerceptionComponent;
 class UAISenseConfig_Sight;
-class UAISenseConfig_Hearing;
 
 //EnemyAI의 현재 행동 상태
 UENUM(BlueprintType)
@@ -36,6 +35,28 @@ public:
 	//Attack 애니메이션이 끝났을 때 호출
 	UFUNCTION(BlueprintCallable)
 	void OnEnemyAttackEnd();
+	//공격 타격 시 호출
+	UFUNCTION(BlueprintCallable)
+	void OnEnemyAttackHit();
+	//현재 AI 상태 반환
+	UFUNCTION(BlueprintPure, Category = "AI|State")
+	EEnemyAIState GetCurrentState() const;
+
+	//사망 처리
+	UFUNCTION(BlueprintCallable)
+	void OnEnemyDead();
+	
+	//피격 시 공격자 추적
+	UFUNCTION(BlueprintCallable)
+	void OnEnemyDamaged(AActor* Attacker);
+
+	//경직 시작
+	UFUNCTION(BlueprintCallable)
+	void StartStun();
+	//경직 종료
+	UFUNCTION(BlueprintCallable)
+	void EndStun();
+
 
 protected:
 	//AI의 시야 감지 관련 설정값
@@ -45,20 +66,21 @@ protected:
 	float LoseSightRadius; //감지한 플레이어를 놓치기 시작하는 거리
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI|Perception")
 	float PeripheralVisionAngle; //AI의 좌우 시야각
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI|Perception")
-	float HearingRange; //소리 감지 거리
 
 	//AI가 주변을 대상을 감지하는 Perception 컴포넌트
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI|Perception")
 	TObjectPtr<UAIPerceptionComponent> AIPerceptionComponent; //AI의 감지장치
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI|Perception")
 	TObjectPtr<UAISenseConfig_Sight> SightConfig; //AI의 시야 감지 설정
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI|Perception")
-	TObjectPtr<UAISenseConfig_Hearing> HearingConfig; //AI의 청각 감지 설정
+	
 
 	//현재 Enemy의 행동 상태
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI|State")
 	EEnemyAIState CurrentState;
+
+	//경직 중인지 확인
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI|State")
+	bool bIsStunned;
 
 	//현재 AI가 공격 대상으로 지정한 Actor
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI|Target")
@@ -70,6 +92,9 @@ protected:
 	//Enemy가 처음 바라보던 방향
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI|Movement")
 	FRotator StartRotation;
+	//최대 추적 거리
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI|Movement")
+	float MaxChaseDistance;
 
 	//AI Perception을 통해 감지된 정보를 처리하는 함수
 	UFUNCTION()
@@ -85,8 +110,6 @@ protected:
 		FAIRequestID RequestID,
 		const FPathFollowingResult& Result
 	) override;
-
-	
 
 	virtual void Tick(float DeltaTime) override;
 };
