@@ -179,4 +179,12 @@ void ALastCureGameMode::HandlePlayerDeath()
 	}
 	bPlayerDeathHandled = true;
 	GI->ApplySerumDeathPenalty();
+
+	//테스트용 UE_Log
+	UE_LOG(
+		LogTemp,
+		Display,
+		TEXT("사망 후 일반 혈청 : %d"),
+		GI->GetSerum()
+	);
 }

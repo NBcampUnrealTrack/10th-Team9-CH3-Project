@@ -3,6 +3,8 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "TimerManager.h"
+#include "LastCureGameMode.h"
+#include "LastCureGameInstance.h"
 
 AEnemy::AEnemy()
 {
@@ -34,6 +36,17 @@ void AEnemy::BeginPlay()
 {
 	Super::BeginPlay();
 	
+	//현재 맵에서 사용중인 게임모드를 가져옴
+	ALastCureGameMode* GM = Cast<ALastCureGameMode>(
+		UGameplayStatics::GetGameMode(this)
+	);
+	
+	//게임모드를 정상적으로 가져왔다면 남은 좀비 수를 셀 수 있도록 현재 좀비를 등록
+	if (GM)
+	{
+		GM->RegisterZombie(this);
+	}
+
 	CurrentHealth = MaxHealth; // 시작 시 최대 체력에 맞춰 현재 체력을 설정
 
 	GetCharacterMovement()->MaxWalkSpeed = MoveSpeed; // 적의 이동 속도를 설정된 이동 속도에 맞게 적용
@@ -117,6 +130,28 @@ void AEnemy::Die()
 	}
 
 	bIsDead = true; // 적을 사망 상태로 변경
+
+	//현재 게임모드를 가져옴
+	ALastCureGameMode* GM = Cast<ALastCureGameMode>(
+		UGameplayStatics::GetGameMode(this)
+	);
+
+	if (GM)
+	{
+		//현재 좀비가 죽었다고 게임모드에 알림
+		GM->HandleZombieDeath(this);
+	}
+
+	//현재 게임인스턴스를 가져옴
+	ULastCureGameInstance* GI = Cast<ULastCureGameInstance>(
+		UGameplayStatics::GetGameInstance(this)
+	);
+
+	if (GI)
+	{
+		//해당 좀비에게 설정된 일반혈청 지급
+		GI->AddSerum(SerumReward);
+	}
 	
 	//현재 AIController 가져오기
 	AEnemyAIController* AIController = Cast<AEnemyAIController>(GetController());

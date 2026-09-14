@@ -10,6 +10,7 @@
 #include "CombatComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Zombiemaid69.h"
+#include "LastCureGameMode.h"
 
 
 AAPlayerCharacter::AAPlayerCharacter()
@@ -256,6 +257,17 @@ float AAPlayerCharacter::TakeDamage(
 void AAPlayerCharacter::HandlePlayerDeath()
 {
 	// 플레이어가 죽었을 때의 처리
+
+	//현재 게임모드를 가져옴
+	ALastCureGameMode* GM = Cast<ALastCureGameMode>(
+		UGameplayStatics::GetGameMode(this)
+	);
+
+	if (GM)
+	{
+		//일반 혈청을 절반으로 감소시킴
+		GM->HandlePlayerDeath();
+	}
 
 	// 더 이상 입력을 받지 않도록 이동/조작 비활성화
 	GetCharacterMovement()->DisableMovement();
