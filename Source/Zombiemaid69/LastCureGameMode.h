@@ -4,6 +4,9 @@
 #include "GameFramework/GameModeBase.h"
 #include "LastCureGameMode.generated.h"
 
+//모든 좀비를 처치했을 때 보스방 입구에 알려주는 이벤트
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnBossEntranceUnlocked);
+
 UCLASS(abstract)
 class ZOMBIEMAID69_API ALastCureGameMode : public AGameModeBase
 {
@@ -44,6 +47,10 @@ public:
 	//플레이어 사망 처리하고 혈청 패널티 적용
 	UFUNCTION(BlueprintCallable, Category = "Stage")
 	void HandlePlayerDeath();
+
+	//블루프린트에서 보스방 잠금 해제 이벤트를 볼 수 있게 해줌
+	UPROPERTY(BlueprintAssignable, Category = "Stage")
+	FOnBossEntranceUnlocked OnBossEntranceUnlocked;
 
 protected:
 	//해당 스테이지의 보스 처치 시 지급할 원종혈청 수량

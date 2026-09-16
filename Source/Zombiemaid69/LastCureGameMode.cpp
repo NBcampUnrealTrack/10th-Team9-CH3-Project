@@ -96,6 +96,10 @@ void ALastCureGameMode::HandleZombieDeath(AActor* Zombie)
 	{
 		//보스방 잠금 해제
 		bAllZombiesKilled = true;
+
+		//보스방 입구에 잠금 해제 알림
+		OnBossEntranceUnlocked.Broadcast();
+
 		UE_LOG(
 			LogTemp,
 			Display,
