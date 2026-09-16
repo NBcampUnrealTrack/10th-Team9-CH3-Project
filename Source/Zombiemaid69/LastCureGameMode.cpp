@@ -96,6 +96,10 @@ void ALastCureGameMode::HandleZombieDeath(AActor* Zombie)
 	{
 		//보스방 잠금 해제
 		bAllZombiesKilled = true;
+
+		//보스방 입구에 잠금 해제 알림
+		OnBossEntranceUnlocked.Broadcast();
+
 		UE_LOG(
 			LogTemp,
 			Display,
@@ -179,4 +183,12 @@ void ALastCureGameMode::HandlePlayerDeath()
 	}
 	bPlayerDeathHandled = true;
 	GI->ApplySerumDeathPenalty();
+
+	//테스트용 UE_Log
+	UE_LOG(
+		LogTemp,
+		Display,
+		TEXT("사망 후 일반 혈청 : %d"),
+		GI->GetSerum()
+	);
 }
