@@ -22,6 +22,10 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Enemy|Stat")
 	float GetAttackWidth() const;
 
+	//체력회복
+	UFUNCTION(BlueprintCallable, Category = "Enemy|Stat")
+	void RecoverHealth(float Amount);
+
 	//받는 데미지
 	virtual float TakeDamage(
 		float DamageAmount,//이번에 받은 데미지양

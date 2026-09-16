@@ -108,6 +108,24 @@ float AEnemy::GetAttackWidth() const
 	return AttackWidth;
 }
 
+void AEnemy::RecoverHealth(float DeltaTime)
+{
+	if (bIsDead)
+	{
+		return;
+	}
+	//이미 최대 체력이면 회복하지 않음
+	if (CurrentHealth >= MaxHealth)
+	{
+		return;
+	}
+	//초당 최대 체력만큼 회복
+	CurrentHealth += MaxHealth * DeltaTime;
+	
+	//최대 체력을 넘지 않도록 제한
+	CurrentHealth = FMath::Clamp(CurrentHealth, 0.0f, MaxHealth);
+}
+
 //사망로직
 void AEnemy::Die()
 {

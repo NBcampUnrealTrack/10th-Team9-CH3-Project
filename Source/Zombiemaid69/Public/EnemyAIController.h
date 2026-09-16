@@ -17,6 +17,7 @@ enum class EEnemyAIState : uint8
 	Alert, //플레이어나 동료를 발견한 상태
 	Chase, // 추적
 	Attack, //공격
+	Skill, //스킬
 	Return, //플레이어 놓침 원위치
 	Dead //사망
 };
@@ -77,7 +78,6 @@ protected:
 	//현재 Enemy의 행동 상태
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI|State")
 	EEnemyAIState CurrentState;
-
 	//경직 중인지 확인
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI|State")
 	bool bIsStunned;
@@ -95,6 +95,10 @@ protected:
 	//최대 추적 거리
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI|Movement")
 	float MaxChaseDistance;
+
+	//대사 위치까지 추적 가능한지 확인
+	UFUNCTION(BlueprintPure, Category = "AI|Navigation")
+	bool CanReachTarget(AActor* Actor) const;
 
 	//AI Perception을 통해 감지된 정보를 처리하는 함수
 	UFUNCTION()
