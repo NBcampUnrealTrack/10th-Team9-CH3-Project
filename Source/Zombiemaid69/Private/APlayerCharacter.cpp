@@ -8,6 +8,7 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "StatsComponent.h"
 #include "CombatComponent.h"
+#include "PerkComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Zombiemaid69.h"
 
@@ -56,6 +57,9 @@ AAPlayerCharacter::AAPlayerCharacter()
 
 	// 전투(발사/재장전) 컴포넌트 생성
 	CombatComponent = CreateDefaultSubobject<UCombatComponent>(TEXT("CombatComponent"));
+
+	// 레벨업 특전 컴포넌트 생성 및 부착
+	PerkComponent = CreateDefaultSubobject<UPerkComponent>(TEXT("PerkComponent"));
 
 	// 카메라의 기본 시야각을 DefaultFOV로 맞춰서 시작 (에디터에서 카메라에 직접 설정한 값과 어긋나지 않도록 주의)
 	FirstPersonCameraComponent->FieldOfView = DefaultFOV;
@@ -287,14 +291,25 @@ void AAPlayerCharacter::DoJumpEnd()
 // 달리기 시작
 void AAPlayerCharacter::DoSprintStart()
 {
-	GetCharacterMovement()->MaxWalkSpeed = BaseWalkSpeed * SprintSpeedMultiplier;
-	UE_LOG(LogTemp, Warning, TEXT("DoSprintStart 호출됨"));
+	// Shift를 누르면 상태 전환
+	// 실제 속도 적용은 Tick()에서 스태미나 여부를 체크한 뒤 처리
+	bWantsToSprint = true;
 }
 
 // 달리기 종료
 void AAPlayerCharacter::DoSprintEnd()
 {
+	// Shift를 떼는 순간 상태 해제
+	bWantsToSprint = false;
+
+	// 이동 속도를 기본 속도로 즉시 복원
 	GetCharacterMovement()->MaxWalkSpeed = BaseWalkSpeed;
+
+	// StatsComponent에 스프린트가 멈췄음을 알려서 회복 대기 타이머를 초기화
+	if (StatsComponent)
+	{
+		StatsComponent->NotifySprintStopped();
+	}
 }
 
 void AAPlayerCharacter::DoFire()

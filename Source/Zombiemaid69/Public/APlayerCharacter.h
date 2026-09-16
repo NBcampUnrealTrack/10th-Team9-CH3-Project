@@ -71,6 +71,10 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
 	class UCombatComponent* CombatComponent;
 
+	/** 레벨업 특전(Perk)을 관리하는 컴포넌트 */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
+	class UPerkComponent* PerkComponent;
+
 	/** 기본 걷기 속도 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
 	float BaseWalkSpeed = 300.0f;
@@ -78,6 +82,9 @@ protected:
 	/** 달리기 시 곱해줄 배율 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
 	float SprintSpeedMultiplier = 1.5f;
+
+	/** 현재 스프린트를 하고 싶어하는 상태인지 (실제 속도 적용은 Tick에서 스태미나 체크 후 결정) */
+	bool bWantsToSprint = false;
 
 	/** 평소(조준 안 할 때) 카메라 시야각 */
 	UPROPERTY(EditAnywhere, Category = "Combat|Aim")
@@ -179,6 +186,7 @@ public:
 	/** 다른 클래스(UI 등)에서 컴포넌트에 접근할 수 있도록 getter 제공 */
 	UStatsComponent* GetStatsComponent() const { return StatsComponent; }
 	UCombatComponent* GetCombatComponent() const { return CombatComponent; }
+	UPerkComponent* GetPerkComponent() const { return PerkComponent; }
 
 protected:
 	/** 디버그용 경험치 추가 Input Action */
