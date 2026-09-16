@@ -7,6 +7,8 @@
 #include "Animation/AnimMontage.h"
 #include "Animation/AnimInstance.h"
 #include "Navigation/PathFollowingComponent.h"
+#include "NavigationSystem.h"
+#include "NavigationPath.h"
 #include "TimerManager.h"
 
 AEnemyAIController::AEnemyAIController()
@@ -72,6 +74,44 @@ void AEnemyAIController::BeginPlay()
 	}
 }
 
+bool AEnemyAIController::CanReachTarget(AActor* Actor) const
+{
+	//대상이 없으면 추적할 수 없음
+	if (!Actor)
+	{
+		return false;
+	}
+	//현재 Enemy가 없으면 추적할 수 없음
+	APawn* ControlledPawn = GetPawn();
+	if (!ControlledPawn)
+	{
+		return false;
+	}
+	//현재 월드의 NavigationSystem 가져오기
+	UNavigationSystemV1* NavigationSystem =
+		UNavigationSystemV1::GetCurrent(GetWorld());
+	if (!NavigationSystem)
+	{
+		return false;
+	}
+	//Enemy 위치에서 대상 위치까지 경로가 있는지 확인
+	UNavigationPath* NavigationPath =
+		NavigationSystem->FindPathToLocationSynchronously(
+			GetWorld(),
+			ControlledPawn->GetActorLocation(),
+			Actor->GetActorLocation(),
+			ControlledPawn
+		);
+	//경로가 없으면 추적할 수 없음
+	if (!NavigationPath)
+	{
+		return false;
+	}
+	//완전한 경로가 있는 경우에만 추적
+	return NavigationPath->IsValid() &&
+		!NavigationPath->IsPartial();
+}
+
 void AEnemyAIController::OnTargetPerceptionUpdated(AActor* Actor, FAIStimulus Stimulus)
 {
 	//사망 상태에서는 감지하지 않음
@@ -79,7 +119,11 @@ void AEnemyAIController::OnTargetPerceptionUpdated(AActor* Actor, FAIStimulus St
 	{
 		return;
 	}
-
+	//Return 중에는 시야 감지를 무시
+	if (CurrentState == EEnemyAIState::Return)
+	{
+		return;
+	}
 	//감지된 대상이 없으면 처리하지않음
 	if (!Actor)
 	{
@@ -92,9 +136,15 @@ void AEnemyAIController::OnTargetPerceptionUpdated(AActor* Actor, FAIStimulus St
 		//플레이어 또는 동료인지 확인
 		if (Actor->ActorHasTag(TEXT("Player")) || Actor->ActorHasTag(TEXT("PlayerAlly")))
 		{
+			//NavMesh 밖의 대상은 감지하지 않음
+			if (!CanReachTarget(Actor))
+			{
+				return;
+			}
 			//이미 추적이나 공격 중이면 현재 상태 유지
 			if (CurrentState == EEnemyAIState::Chase ||
-				CurrentState == EEnemyAIState::Attack)
+				CurrentState == EEnemyAIState::Attack ||
+				CurrentState == EEnemyAIState::Skill)
 			{
 				TargetActor = Actor;
 				return;
@@ -320,6 +370,11 @@ void AEnemyAIController::OnEnemyDamaged(AActor* Attacker)
 	{
 		return;
 	}
+	//Return 중에는 피격 어그로 무시
+	if (CurrentState == EEnemyAIState::Return)
+	{
+		return;
+	}
 	//공격자가 없으면 처리하지않음
 	if (!Attacker)
 	{
@@ -331,11 +386,21 @@ void AEnemyAIController::OnEnemyDamaged(AActor* Attacker)
 	{
 		return;
 	}
+	//NavMesh 밖의 공격자는 추적하지 않음
+	if (!CanReachTarget(Attacker))
+	{
+		return;
+	}
 	//공격자를 추적 대상으로 지정
 	TargetActor = Attacker;
-	
+
 	//공격 중에는 현재 공격을 유지
 	if (CurrentState == EEnemyAIState::Attack)
+	{
+		return;
+	}
+	//Skill 사용 중에는 스킬 유지
+	if (CurrentState == EEnemyAIState::Skill)
 	{
 		return;
 	}
@@ -489,40 +554,38 @@ void AEnemyAIController::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
+	AEnemy* Enemy = Cast<AEnemy>(GetPawn());
+	if (!Enemy)
+	{
+		return;
+	}
+	//Return 중에는 체력 회복
+	if (CurrentState == EEnemyAIState::Return)
+	{
+		Enemy->RecoverHealth(DeltaTime);
+		return;
+	}
 	//현재 AI가 Chase 상태인지 확인
 	if (CurrentState != EEnemyAIState::Chase)
 	{
 		return;
 	}
-
 	//경직 중에는 행동하지 않음
 	if (bIsStunned)
 	{
 		return;
 	}
-
 	//추적 대상이 존재하는지 확인
 	if (!TargetActor)
 	{
 		return;
 	}
-
-	//현재 AI가 조종하고 있는 Enemyf를 가져옴
-	APawn* ControlledPawn = GetPawn();
-
 	//조종중인 Pawn이 없다면 회전하지 않음
+	APawn* ControlledPawn = GetPawn();
 	if (!ControlledPawn)
 	{
 		return;
 	}
-
-	//현재 Enemy를 가져옴
-	AEnemy* Enemy = Cast<AEnemy>(ControlledPawn);
-	if (!Enemy)
-	{
-		return;
-	}
-
 	//시작 위치에서 얼마나 멀어졌는지 계산
 	float DistanceFromStart = FVector::Dist(
 		ControlledPawn->GetActorLocation(),
@@ -546,13 +609,11 @@ void AEnemyAIController::Tick(float DeltaTime)
 
 		return;
 	}
-
 	//플레이어와의 거리 계산
 	float DistanceToTarget = FVector::Dist(
 		ControlledPawn->GetActorLocation(),
 		TargetActor->GetActorLocation()
 	);
-
 	//공격 거리 안에 들어왔는지 확인
 	if (DistanceToTarget <= Enemy->GetAttackRange())
 	{
@@ -568,7 +629,6 @@ void AEnemyAIController::Tick(float DeltaTime)
 
 		return;
 	}
-
 	//Enemy 위치에서 플레이어 위치를 향하는 방향을 계산
 	FVector Direction = TargetActor->GetActorLocation() - ControlledPawn->GetActorLocation();
 
@@ -580,7 +640,6 @@ void AEnemyAIController::Tick(float DeltaTime)
 	{
 		return;
 	}
-	
 	//플레이어 방향을 바라보는 회전값을 계싼
 	FRotator TargetRotation = Direction.Rotation();
 	//Enemy가 플레이어 방향을 바라보도록 회전

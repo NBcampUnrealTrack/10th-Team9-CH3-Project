@@ -15,7 +15,8 @@ public class Zombiemaid69 : ModuleRules
 			"InputCore",
 			"EnhancedInput",
 			"AIModule",
-			"StateTreeModule",
+            "NavigationSystem",
+            "StateTreeModule",
 			"GameplayStateTreeModule",
 			"UMG",
 			"Slate"
