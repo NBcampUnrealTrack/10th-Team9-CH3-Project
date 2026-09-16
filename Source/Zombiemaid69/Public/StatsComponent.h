@@ -15,6 +15,9 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnExperienceChanged, float, Curren
 /** 체력이 변경될 때 UI(체력바)에서 구독할 델리게이트 */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnHealthChanged, float, NewHealth, float, MaxHealth);
 
+/** 스태미나가 변경될 때 UI(스태미나바)에서 구독할 델리게이트 */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnStaminaChanged, float, NewStamina, float, MaxStamina);
+
 /** 사망했을 때 알림을 주는 델리게이트 (사망 애니메이션, 처치 판정, 게임오버 UI 등에서 구독) */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnDeath);
 
@@ -72,13 +75,34 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "Stats|Stamina")
 	float CurrentStamina;
 
-	/** 레벨업이 발생했을 때 UI/이펙트/사운드 등에서 구독할 이벤트 */
-	UPROPERTY(BlueprintAssignable, Category = "Stats|Events")
-	FOnLevelUp OnLevelUp;
+	/** 초당 스태미나 소모량(스프린트 중) */
+	UPROPERTY(EditAnywhere, Category = "Stats|Stamina")
+	float StaminaDrainRate = 20.0f;
+
+	/** 초당 스태미나 회복량 (스프린트를 안 할 때) */
+	UPROPERTY(EditAnywhere, Category = "Stats|Stamina")
+	float StaminaRegenRate = 10.0f;
+
+	/** 스태미나 소모를 멈춘 뒤, 회복이 시작되기까지 대기하는 시간(초) */
+	UPROPERTY(EditAnywhere, Category = "Stats|Stamina")
+	float StaminaRegenDelay = 1.0f;
 
 	/** 현재 스태미나가 고갈되어 스프린트가 불가능한 상태인지 여부 */
 	UPROPERTY(BlueprintReadOnly, Category = "Stats|Stamina")
 	bool bIsStaminaDepleted = false;
+
+	/** 스태미나를 소모하려고 시도하는 함수 */
+	/** 소모 가능하면 true 반환하며 실제로 차감, 불가능하면 false 반환 */
+	UFUNCTION(BlueprintCallable, Category = "Stats|Stamina")
+	bool TryConsumeStamina(float DeltaTime);
+
+	/** 스프린트를 멈췄음을 알리는 함수(회복 대기시간 타이머 초기화용) */
+	UFUNCTION(BlueprintCallable, Category = "Stats|Stamina")
+	void NotifySprintStopped();
+
+	/** 레벨업이 발생했을 때 UI/이펙트/사운드 등에서 구독할 이벤트 */
+	UPROPERTY(BlueprintAssignable, Category = "Stats|Events")
+	FOnLevelUp OnLevelUp;
 
 	/** 경험치가 변경될 때마다 UI(경험치 바)에서 구독할 이벤트 */
 	UPROPERTY(BlueprintAssignable, Category = "Stats|Events")
@@ -95,6 +119,10 @@ public:
 	/** 체력이 바뀔 때마다 UI 등에 알림 */
 	UPROPERTY(BlueprintAssignable, Category = "Stats|Events")
 	FOnHealthChanged OnHealthChanged;
+
+	/** 스태미나가 바뀔 때마다 UI 등에 알림 */ 
+	UPROPERTY(BlueprintAssignable, Category = "Stats|Events")
+	FOnStaminaChanged OnStaminaChanged;
 
 	/** 사망했을 때 알림 */
 	UPROPERTY(BlueprintAssignable, Category = "Stats|Events")
@@ -130,4 +158,7 @@ public:
 private:
 	/** 경험치가 임계값을 넘었을 때 실제 레벨업 처리를 수행하는 내부 함수 */
 	void ProcessLevelUp();
+
+	/** 마지막으로 스태미나를 소모한 시점(회복 대기시간 계산용) */
+	float TimeSinceLastStaminaUse = 0.0f;
 };

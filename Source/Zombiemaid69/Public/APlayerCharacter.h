@@ -50,14 +50,6 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Input")
 	class UInputAction* SprintAction;
 
-	/** 기본 걷기 속도 */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
-	float BaseWalkSpeed = 300.0f;
-
-	/** 달리기 시 곱해줄 배율 */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
-	float SprintSpeedMultiplier = 1.5f;
-
 	/** 체력/스태미나/레벨을 관리하는 컴포넌트 */
 	/** meta = (AllowPrivateAccess = "true") : private로 선언을 했지만 블루프인트에서는 노출을 허용한다 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
@@ -71,9 +63,37 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Input")
 	UInputAction* ReloadAction;
 
+	/** 조준 Input Action(우클릭) */
+	UPROPERTY(EditAnywhere, Category = "Input")
+	UInputAction* AimAction;
+
 	/** 전투(발사/재장전) 컴포넌트 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
 	class UCombatComponent* CombatComponent;
+
+	/** 기본 걷기 속도 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
+	float BaseWalkSpeed = 300.0f;
+
+	/** 달리기 시 곱해줄 배율 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
+	float SprintSpeedMultiplier = 1.5f;
+
+	/** 평소(조준 안 할 때) 카메라 시야각 */
+	UPROPERTY(EditAnywhere, Category = "Combat|Aim")
+	float DefaultFOV = 90.0f;
+
+	/** 조준 중일 때 카메라 시야각(숫자가 작을수록 더 확대되어 보임) */
+	UPROPERTY(EditAnywhere, Category = "Combat|Aim")
+	float AimingFOV = 60.0f;
+
+	/** FOV가 목표값까지 변화하는 속도(클수록 더 빠르게 줌인 / 줌아웃됨) */
+	UPROPERTY(EditAnywhere, Category = "Combat|Aim")
+	float AimInterpSpeed = 15.0f;
+
+	/** 조준 중일 때 이동 속도를 줄이고 싶을 경우 사용할 배율(1.0이면 감속 없음) */
+	UPROPERTY(EditAnywhere, Category = "Combat|Aim")
+	float AimWalkSpeedMultiplier = 0.5f;
 
 public:
 	AAPlayerCharacter();
@@ -118,11 +138,21 @@ protected:
 	UFUNCTION(BlueprintCallable, Category = "Combat")
 	virtual void DoReload();
 
+	/** 우클릭을 눌렀을 때 호출(조준 시작) */
+	UFUNCTION(BlueprintCallable, Category = "Combat")
+	virtual void DoAimStart();
+
+	/** 우클릭을 뗐을 때 호출 (조준 종료) */
+	UFUNCTION(BlueprintCallable, Category = "Combat")
+	virtual void DoAimEnd();
+
 	/** StatsComponent의 OnDeath 델리게이트에 의해 자동 호출되는 사망 처리 콜백 */
 	UFUNCTION()
 	void HandlePlayerDeath();
 
 	virtual void BeginPlay() override;
+
+	virtual void Tick(float DeltaTime) override;
 
 protected:
 

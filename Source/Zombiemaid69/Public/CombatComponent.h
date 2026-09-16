@@ -48,6 +48,10 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "Combat|State")
 	bool bIsReloading = false;
 
+	/** 현재 조준상태 여부 */
+	UPROPERTY(BlueprintReadOnly, Category = "Combat|Aim")
+	bool bIsAiming = false;
+
 	/** 탄약 수가 바뀔 때마다 UI에 알림 */
 	UPROPERTY(BlueprintAssignable, Category = "Combat|Events")
 	FOnAmmoChanged OnAmmoChanged;
@@ -55,6 +59,14 @@ public:
 	/** 발사 시도 (좌클릭을 누른 순간 캐릭터에서 호출) */
 	UFUNCTION(BlueprintCallable, Category = "Combat")
 	void Fire();
+	
+	/** 조준 시작  */
+	UFUNCTION(BlueprintCallable, Category = "Combat")
+	void StartAim();
+
+	/** 조준 종료 */
+	UFUNCTION(BlueprintCallable, Category = "Combat")
+	void StopAim();
 
 	/** 재장전 시도 (R키를 누른 순간 캐릭터에서 호출) */
 	UFUNCTION(BlueprintCallable, Category = "Combat")

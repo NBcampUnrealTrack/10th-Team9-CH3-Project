@@ -187,3 +187,21 @@ void UCombatComponent::FinishReload()
 	// 변경된 탄약 정보를 UI에 알림
 	OnAmmoChanged.Broadcast(CurrentAmmoInClip, ReserveAmmo);
 }
+
+void UCombatComponent::StartAim()
+{
+	// 재장전 중에는 조준하지 않도록 제한
+	if (bIsReloading)
+	{
+		return;
+	}
+
+	// 조준 상태를 true로 전환
+	bIsAiming = true;
+}
+
+void UCombatComponent::StopAim()
+{
+	// 조준 상태를 false로 전환
+	bIsAiming = false;
+}

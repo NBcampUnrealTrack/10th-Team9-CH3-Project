@@ -56,6 +56,9 @@ AAPlayerCharacter::AAPlayerCharacter()
 
 	// 전투(발사/재장전) 컴포넌트 생성
 	CombatComponent = CreateDefaultSubobject<UCombatComponent>(TEXT("CombatComponent"));
+
+	// 카메라의 기본 시야각을 DefaultFOV로 맞춰서 시작 (에디터에서 카메라에 직접 설정한 값과 어긋나지 않도록 주의)
+	FirstPersonCameraComponent->FieldOfView = DefaultFOV;
 }
 
 void AAPlayerCharacter::BeginPlay()
@@ -66,6 +69,59 @@ void AAPlayerCharacter::BeginPlay()
 	if (StatsComponent)
 	{
 		StatsComponent->OnDeath.AddDynamic(this, &AAPlayerCharacter::HandlePlayerDeath);
+	}
+}
+
+void AAPlayerCharacter::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+
+	// 스프린트 로직
+	if (bWantsToSprint && StatsComponent)
+	{
+		const bool bCanSprint = StatsComponent->TryConsumeStamina(DeltaTime);
+
+		if (bCanSprint)
+		{
+			GetCharacterMovement()->MaxWalkSpeed = BaseWalkSpeed * SprintSpeedMultiplier;
+		}
+		else
+		{
+			GetCharacterMovement()->MaxWalkSpeed = BaseWalkSpeed;
+		}
+	}
+
+	// 조준(줌) 카메라 FOV 보간 처리
+	if (CombatComponent && FirstPersonCameraComponent)
+	{
+		// 현재 조준 상태에 따라 목표 FOV 값을 결정
+		const float TargetFOV = CombatComponent->bIsAiming ? AimingFOV : DefaultFOV;
+
+		// 현재 FOV에서 목표 FOV로 매 프레임 부드럽게 보간 (FInterpTo: 급격한 변화 없이 자연스럽게 전환)
+		const float NewFOV = FMath::FInterpTo(
+			FirstPersonCameraComponent->FieldOfView,		// 현재 FOV
+			TargetFOV,										// 목표 FOV
+			DeltaTime,										// 프레임 시간
+			AimInterpSpeed									// 보간 속도
+		);
+
+		// 계산된 FOV를 실제 카메라에 적용
+		FirstPersonCameraComponent->FieldOfView = NewFOV;
+
+		// 조준 중 이동 속도 감소
+		// 스프린트 중이 아닐 때만 조준 감속을 적용 
+		// 스프린트와 조준이 동시에 눌렸을 때의 우선순위는 필요에 따라 조정
+		if (!bWantsToSprint)
+		{
+			if (CombatComponent->bIsAiming)
+			{
+				GetCharacterMovement()->MaxWalkSpeed = BaseWalkSpeed * AimWalkSpeedMultiplier;
+			}
+			else
+			{
+				GetCharacterMovement()->MaxWalkSpeed = BaseWalkSpeed;
+			}
+		}
 	}
 }
 
@@ -126,10 +182,35 @@ void AAPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 		);
 
 		// 좌클릭을 누르면 DoFire 호출
-		EnhancedInputComponent->BindAction(FireAction, ETriggerEvent::Started, this, &AAPlayerCharacter::DoFire);
+		EnhancedInputComponent->BindAction(
+			FireAction, 
+			ETriggerEvent::Started, 
+			this, 
+			&AAPlayerCharacter::DoFire
+		);
 
 		// R키를 누르면 DoReload 호출
-		EnhancedInputComponent->BindAction(ReloadAction, ETriggerEvent::Started, this, &AAPlayerCharacter::DoReload);
+		EnhancedInputComponent->BindAction(
+			ReloadAction, 
+			ETriggerEvent::Started, 
+			this, 
+			&AAPlayerCharacter::DoReload
+		);
+
+		// 우클릭을 누르면 DoAimStart 호출, 떼면 DoAimEnd 호출
+		EnhancedInputComponent->BindAction(
+			AimAction, 
+			ETriggerEvent::Started, 
+			this,
+			&AAPlayerCharacter::DoAimStart
+		);
+
+		EnhancedInputComponent->BindAction(
+			AimAction, 
+			ETriggerEvent::Completed,
+			this, 
+			&AAPlayerCharacter::DoAimEnd
+		);
 
 		// 디버그: 경험치 추가 (테스트용)
 		EnhancedInputComponent->BindAction(
@@ -270,6 +351,24 @@ void AAPlayerCharacter::HandlePlayerDeath()
 	// TODO: 사망 시 게임오버/리스폰 UI 위젯 생성 및 화면 표시 코드 추가 예정
 
 	UE_LOG(LogTemp, Warning, TEXT("플레이어 사망 처리됨"));
+}
+
+void AAPlayerCharacter::DoAimStart()
+{
+	// CombatComponent가 유효하면 조준 시작 로직 위임
+	if (CombatComponent)
+	{
+		CombatComponent->StartAim();
+	}
+}
+
+void AAPlayerCharacter::DoAimEnd()
+{
+	// CombatComponent가 유효하면 조준 종료 로직 위임
+	if (CombatComponent)
+	{
+		CombatComponent->StopAim();
+	}
 }
 
 // 레벨업 임시 테스트 함수 선언

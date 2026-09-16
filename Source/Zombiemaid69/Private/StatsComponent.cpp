@@ -25,11 +25,69 @@ void UStatsComponent::BeginPlay()
 
 void UStatsComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
-	// 부모 클래스의 Tick을 먼저 호출
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
-	
-	// 스태미나 회복 로직 추가 예정
+	// 스태미나가 이미 최대치라면 회복 로직을 실행할 필요 없음
+	if (CurrentStamina >= MaxStamina)
+	{
+		return;
+	}
+
+	// 마지막으로 스태미나를 사용한 뒤 지난 시간을 누적
+	TimeSinceLastStaminaUse += DeltaTime;
+
+	// 회복 대기시간(StaminaRegenDelay)이 지나야 회복을 시작함
+	if (TimeSinceLastStaminaUse >= StaminaRegenDelay)
+	{
+		// 델타타임 기준으로 스태미나를 서서히 회복
+		CurrentStamina = FMath::Clamp(CurrentStamina + (StaminaRegenRate * DeltaTime), 0.0f, MaxStamina);
+
+		// 스태미나가 회복되었으므로 UI 등에 변경 알림
+		OnStaminaChanged.Broadcast(CurrentStamina, MaxStamina);
+
+		// 스태미나가 다시 조금이라도 찼다면 고갈 상태 해제
+		if (bIsStaminaDepleted && CurrentStamina > 0.0f)
+		{
+			bIsStaminaDepleted = false;
+		}
+	}
+}
+
+bool UStatsComponent::TryConsumeStamina(float DeltaTime)
+{
+	// 스태미나가 이미 고갈 상태라면 스프린트 자체를 거부
+	if (bIsStaminaDepleted)
+	{
+		return false;
+	}
+
+	// 이번 프레임에 소모할 스태미나량 계산
+	const float DrainAmount = StaminaDrainRate * DeltaTime;
+
+	// 현재 스태미나가 소모량보다 적다면(즉 스태미나가 바닥나려는 상황)
+	if (CurrentStamina < DrainAmount)
+	{
+		CurrentStamina = 0.0f;
+		bIsStaminaDepleted = true;
+		OnStaminaChanged.Broadcast(CurrentStamina, MaxStamina);
+		return false;
+	}
+
+	// 정상적으로 스태미나 차감
+	CurrentStamina -= DrainAmount;
+
+	// 스태미나를 사용했으므로 회복 대기 타이머를 0으로 초기화
+	TimeSinceLastStaminaUse = 0.0f;
+
+	OnStaminaChanged.Broadcast(CurrentStamina, MaxStamina);
+
+	return true;
+}
+
+void UStatsComponent::NotifySprintStopped()
+{
+	// 스프린트를 멈춘 시점을 회복 대기 타이머 계산의 기준으로 삼기 위해 초기화
+	TimeSinceLastStaminaUse = 0.0f;
 }
 
 void UStatsComponent::AddExperience(float EXPAmount)
