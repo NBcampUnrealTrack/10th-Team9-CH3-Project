@@ -57,31 +57,61 @@ void AEnemy::BeginPlay()
 	}
 }
 
-//받는 데미지
+//받는 데미지 - 추가수정(윤민)
 float AEnemy::TakeDamage(
 	float DamageAmount,
-	struct FDamageEvent const& DamageEvent,
+	const FDamageEvent& DamageEvent,
 	AController* EventInstigator,
 	AActor* DamageCauser
 )
 {
-	Super::TakeDamage(
-		DamageAmount, 
-		DamageEvent, 
-		EventInstigator, 
-		DamageCauser);
-
-	if (bIsDead) // 이미 사망한 적은 추가 데미지를 받지 않도록 처리
+	// 시체, 체력0인 경우, 피해가 없는 요청 무시
+	if (!IsAlive() || DamageAmount <= 0.0f)
 	{
 		return 0.0f;
 	}
 
-	CurrentHealth -= DamageAmount; // 받은 데미지만큼 현재 체력 감소
+	const float ActualDamage = Super::TakeDamage(
+		DamageAmount,
+		DamageEvent,
+		EventInstigator,
+		DamageCauser
+	);
 
-	if (CurrentHealth <= 0.0f) // 체력이 0 이하가 되면 사망 처리
+	if (!IsAlive() || ActualDamage <= 0.0f)
+	{
+		return 0.0f;
+	}
+
+	const float PreviousHealth = CurrentHealth;
+
+	// 체력이 음수가 되지않게 제한
+
+	CurrentHealth = FMath::Max(
+		PreviousHealth - ActualDamage,
+		0.0f
+	);
+
+	const float HealthLost = PreviousHealth - CurrentHealth;
+
+	if (HealthLost <= 0.0f)
+	{
+		return 0.0f;
+	}
+
+	// 치명타도 알림 보내고 사망처리
+	OnHealthChanged.Broadcast(
+		this,
+		PreviousHealth,
+		CurrentHealth,
+		EventInstigator,
+		DamageCauser
+	);
+
+	if (!IsAlive())
 	{
 		Die();
-		return DamageAmount;
+		return HealthLost;
 	}
 	//현재 AIController 가져오기
 	AEnemyAIController* AIController = Cast <AEnemyAIController> (GetController());
@@ -103,7 +133,7 @@ float AEnemy::TakeDamage(
 		AIController->OnEnemyDamaged(Attacker);
 	}
 
-	return DamageAmount;
+	return HealthLost;
 }
 
 float AEnemy::GetAttackRange() const
@@ -148,6 +178,7 @@ void AEnemy::Die()
 	}
 
 	bIsDead = true; // 적을 사망 상태로 변경
+	CurrentHealth = 0.0f;
 
 	//현재 게임모드를 가져옴
 	ALastCureGameMode* GM = Cast<ALastCureGameMode>(
@@ -194,6 +225,7 @@ void AEnemy::Die()
 		2.5f,
 		false
 	);
+	OnDied.Broadcast(this); // 사망 이벤트 유지
 }
 
 void AEnemy::RemoveDeadBody()

@@ -4,6 +4,26 @@
 #include "GameFramework/Character.h"
 #include "Enemy.generated.h"
 
+// 윤민 추가작성 - Colleague와 Enemy를 호환하기위한 코드 작성부(시작지점)
+class AEnemy;
+class AController;
+
+/** 실제 체력 변경과 공격자 정보 전달 */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_FiveParams(
+	FEnemyHealthChangedSignature,
+	AEnemy*, DamagedEnemy,
+	float, PreviousHealth,
+	float, NewHealth,
+	AController*, InstigatorController,
+	AActor*, DamageCauser
+);
+
+/** 사망이 확정된 몬스터 내용 전달 */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(
+	FEnemyDiedSignature,
+	AEnemy*, DeadEnemy
+);
+
 UCLASS()
 class ZOMBIEMAID69_API AEnemy : public ACharacter
 {
@@ -11,6 +31,19 @@ class ZOMBIEMAID69_API AEnemy : public ACharacter
 
 public:
 	AEnemy();
+
+	// 윤민 추가작성 - Colleague와 Enemy를 호환하기위한 코드 작성부(시작지점)
+	UFUNCTION(BlueprintPure, Category = "Enemy|State")
+	bool IsAlive() const
+	{
+		return !bIsDead && CurrentHealth > 0.0f;
+	}
+
+	UPROPERTY(BlueprintAssignable, Category = "Enemy|Events")
+	FEnemyHealthChangedSignature OnHealthChanged;
+
+	UPROPERTY(BlueprintAssignable, Category = "Enemy|Events")
+	FEnemyDiedSignature OnDied;
 
 	//공격 거리 반환
 	UFUNCTION(BlueprintPure, Category = "Enemy|Stat")

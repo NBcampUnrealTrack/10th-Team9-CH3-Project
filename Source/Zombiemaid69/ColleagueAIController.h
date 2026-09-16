@@ -5,6 +5,8 @@
 #include "TimerManager.h"
 #include "ColleagueAIController.generated.h"
 
+class AEnemy;
+
 /** 동료 AI가 현재 수행할 수 있는 행동 상태  */
 UENUM(BlueprintType)
 enum class EColleagueState : uint8
@@ -106,4 +108,42 @@ protected:
 
 	/** 달리는 상태값 전달 용도 */
 	bool bIsRunningToPlayer = false;
+
+	/** 전투 중 적 시야 처리 */
+	void HandleCombatState(APawn* ControlledPawn);
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Colleague|Combat"
+		,meta = (ClampMin = "0.0"))
+	float CombatFollowSpeed = 150.0f;
+
+	/** 플레이어가 먼저 피해를 준 경우에만 공격 허용 */
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Colleague|Combat")
+	bool bCombatAuthorized = false;
+
+	/** 몬스터의 체력 변경 알림 수신 */
+	UFUNCTION()
+	void HandleEnemyHealthChanged(
+		AEnemy* DamagedEnemy,
+		float PreviousHealth,
+		float NewHealth,
+		AController* InstigatorController,
+		AActor* DamageCauser
+	);
+
+	/** 게임 종료 또는 컨트롤러 제거 시 연결 해제*/
+	virtual void EndPlay(
+		const EEndPlayReason::Type EndPlayReason
+	) override;
+
+	/** 몬스터의 피해 알림 연결 */
+	void RegisterEnemy(AEnemy* Enemy);
+
+	/** 새로 생성된 액터 확인 */
+	void HandleActorSpawned(AActor* SpawnedActor);
+
+	/** 액터 생성 알림 연결 정보 */
+	FDelegateHandle ActorSpawnedHandle;
+
+	/** 연결 몬스터 목록 및 몬스터 제거 참조*/
+	TArray<TWeakObjectPtr<AEnemy>> ObservedEnemies;
 };
