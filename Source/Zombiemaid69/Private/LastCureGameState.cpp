@@ -20,6 +20,17 @@ int32 ALastCureGameState::GetRemainingZombieCount() const
 
 void ALastCureGameState::SetRemainingZombieCount(int32 NewCount)
 {
-	//잘못된 값이 전달되어도 남은 수가 음수가 되지 않도록 제한
-	RemainingZombieCount = FMath::Max(0, NewCount);
+	//남은 좀비 수가 음수가 되지 않도록 제한
+	const int32 SafeCount = FMath::Max(0, NewCount);
+
+	//이전 수량과 같으면 UI에 다시 알리지 않음
+	if (RemainingZombieCount == SafeCount)
+	{
+		return;
+	}
+
+	RemainingZombieCount = SafeCount;
+
+	//변경된 수량을 UI에 알림
+	OnRemainingZombieCountChanged.Broadcast(RemainingZombieCount);
 }

@@ -4,6 +4,13 @@
 #include "GameFramework/GameStateBase.h"
 #include "LastCureGameState.generated.h"
 
+//남은 좀비 수가 변경됐을 때 UI에 알려주는 이벤트 추가
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(
+    FOnRemainingZombieCountChanged,
+    int32,
+    NewCount
+);
+
 //현재 맴 입장 동안 스테이지 완료 상태 관리
 UCLASS()
 class ZOMBIEMAID69_API ALastCureGameState : public AGameStateBase
@@ -24,6 +31,10 @@ public:
 
 	//게임모드에서 집계한 남은 좀비 수 반영
 	void SetRemainingZombieCount(int32 NewCount);
+
+	//블루프린트에서 남은 좀비 수 변경 이벤트를 받을 수 있게 함
+	UPROPERTY(BlueprintAssignable, Category = "Stage")
+	FOnRemainingZombieCountChanged OnRemainingZombieCountChanged;
 
 private:
 	//이번 맵 입장에서 완료 처리가 이뤄졌는지 확인
