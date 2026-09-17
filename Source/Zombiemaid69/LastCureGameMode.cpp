@@ -94,6 +94,14 @@ void ALastCureGameMode::HandleZombieDeath(AActor* Zombie)
 	//마지막 좀비를 처치했다면 보스방 입장 가능 상태로 변경
 	if (RemainingZombies.Num() == 0)
 	{
+		//테스트용 UE_LOG
+		UE_LOG(
+			LogTemp,
+			Display,
+			TEXT("남은 좀비 수: %d"),
+			GS->GetRemainingZombieCount()
+		);
+
 		//보스방 잠금 해제
 		bAllZombiesKilled = true;
 
@@ -108,14 +116,6 @@ void ALastCureGameMode::HandleZombieDeath(AActor* Zombie)
 
 		return;
 	}
-
-	//테스트용 UE_LOG
-	UE_LOG(
-		LogTemp,
-		Display,
-		TEXT("남은 좀비 수: %d"),
-		GS->GetRemainingZombieCount()
-	);
 }
 
 bool ALastCureGameMode::CanEnterBossRoom() const
