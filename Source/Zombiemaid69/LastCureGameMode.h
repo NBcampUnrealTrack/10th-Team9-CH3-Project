@@ -52,6 +52,10 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "Stage")
 	FOnBossEntranceUnlocked OnBossEntranceUnlocked;
 
+	//선택한 번호의 스테이지로 이동
+	UFUNCTION(BlueprintCallable, Category = "Stage")
+	void EnterStageByNumber(int32 StageNumber);
+
 protected:
 	//해당 스테이지의 보스 처치 시 지급할 원종혈청 수량
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "SerumReward", meta = (ClampMin = "1"))//ClampMin->에디터에서 입력하는 최솟값을 1로 제한
@@ -65,6 +69,18 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Stage")
 	TSoftObjectPtr<UWorld> LaboratoryLevel;
 
+	//EnterStageByNumber 레벨
+	//1번, 민가
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Stage")
+	TSoftObjectPtr<UWorld> Stage1Level;
+
+	//2번, 공장
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Stage")
+	TSoftObjectPtr<UWorld> Stage2Level;
+
+	//3번, 백화점
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Stage")
+	TSoftObjectPtr<UWorld> Stage3Level;
 
 private:
 	TSet<TWeakObjectPtr<AActor>> RemainingZombies;

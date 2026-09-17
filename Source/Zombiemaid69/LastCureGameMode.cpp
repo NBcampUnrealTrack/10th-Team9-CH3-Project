@@ -192,3 +192,25 @@ void ALastCureGameMode::HandlePlayerDeath()
 		GI->GetSerum()
 	);
 }
+
+void ALastCureGameMode::EnterStageByNumber(int32 StageNumber)
+{
+	switch (StageNumber)
+	{
+	case 1:
+		EnterStage(Stage1Level);
+		break;
+
+	case 2:
+		EnterStage(Stage2Level);
+		break;
+
+	case 3:
+		EnterStage(Stage3Level);
+		break;
+
+	default:
+		UE_LOG(LogTemp, Warning, TEXT("존재하지 않는 스테이지입니다."));
+		break;
+	}
+}
