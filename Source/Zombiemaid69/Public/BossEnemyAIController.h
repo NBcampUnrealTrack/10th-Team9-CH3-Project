@@ -1,4 +1,4 @@
-#pragma once
+ï»¿#pragma once
 
 #include "CoreMinimal.h"
 #include "EnemyAIController.h"
@@ -12,15 +12,15 @@ class ZOMBIEMAID69_API ABossEnemyAIController : public AEnemyAIController
 public:
 	ABossEnemyAIController();
 
-	//º¸½º ½ºÅ³ »ç¿ë
+	//ë³´ìŠ¤ ìŠ¤í‚¬ ì‚¬ìš©
 	UFUNCTION(BlueprintCallable, Category = "Boss|Skill")
 	void UseSkill();
-	//º¸½º ½ºÅ³ Á¾·á
+	//ë³´ìŠ¤ ìŠ¤í‚¬ ì¢…ë£Œ
 	UFUNCTION(BlueprintCallable, Category = "Boss|Skill")
 	void OnBossSkillEnd();
 
 protected:
-	//½ºÅ³ »ç¿ë ÁßÀÎÁö È®ÀÎ
+	//ìŠ¤í‚¬ ì‚¬ìš© ì¤‘ì¸ì§€ í™•ì¸
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Boss|Skill")
 	bool bIsUsingSkill;
 

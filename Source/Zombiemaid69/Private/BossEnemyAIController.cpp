@@ -1,4 +1,4 @@
-#include "BossEnemyAIController.h"
+ï»¿#include "BossEnemyAIController.h"
 #include "BossEnemy.h"
 
 ABossEnemyAIController::ABossEnemyAIController()
@@ -8,77 +8,78 @@ ABossEnemyAIController::ABossEnemyAIController()
 
 void ABossEnemyAIController::UseSkill()
 {
-	//Chase »óÅÂ¿¡¼­¸¸ ½ºÅ³ »ç¿ë
+	//Chase ìƒíƒœì—ì„œë§Œ ìŠ¤í‚¬ ì‚¬ìš©
 	if (CurrentState != EEnemyAIState::Chase)
 	{
 		return;
 	}
-	//°ø°İ ´ë»óÀÌ ¾øÀ¸¸é Ã³¸®ÇÏÁö ¾ÊÀ½
+	//ê³µê²© ëŒ€ìƒì´ ì—†ìœ¼ë©´ ì²˜ë¦¬í•˜ì§€ ì•ŠìŒ
 	if (!TargetActor)
 	{
 		return;
 	}
-	//ÀÌ¹Ì ½ºÅ³ »ç¿ë ÁßÀÌ¸é Ã³¸®ÇÏÁö ¾ÊÀ½
+	//ì´ë¯¸ ìŠ¤í‚¬ ì‚¬ìš© ì¤‘ì´ë©´ ì²˜ë¦¬í•˜ì§€ ì•ŠìŒ
 	if (bIsUsingSkill)
 	{
 		return;
 	}
 
-	//ÇöÀç º¸½º¸¦ °¡Á®¿È
+	//í˜„ì¬ ë³´ìŠ¤ë¥¼ ê°€ì ¸ì˜´
 	ABossEnemy* BossEnemy = Cast<ABossEnemy>(GetPawn());
 	if (!BossEnemy)
 	{
 		return;
 	}
-	//Skill »óÅÂ·Î º¯°æ
+	//Skill ìƒíƒœë¡œ ë³€ê²½
 	CurrentState = EEnemyAIState::Skill;
-	//½ºÅ³ »ç¿ë »óÅÂ·Î º¯°æ
+	//ìŠ¤í‚¬ ì‚¬ìš© ìƒíƒœë¡œ ë³€ê²½
 	bIsUsingSkill = true;
-	//½ºÅ³ »ç¿ë Áß ÀÌµ¿ Á¤Áö
+	//ìŠ¤í‚¬ ì‚¬ìš© ì¤‘ ì´ë™ ì •ì§€
 	StopMovement();
-	//½ºÅ³ ¾Ö´Ï¸ŞÀÌ¼Ç Àç»ı
+	//ìŠ¤í‚¬ ì• ë‹ˆë©”ì´ì…˜ ì¬ìƒ
 	BossEnemy->PlaySkill();
 }
 
 void ABossEnemyAIController::OnBossSkillEnd()
 {
-	//½ºÅ³ »ç¿ë ÁßÀÌ ¾Æ´Ï¶ó¸é Ã³¸®ÇÏÁö ¾ÊÀ½
+	//ìŠ¤í‚¬ ì‚¬ìš© ì¤‘ì´ ì•„ë‹ˆë¼ë©´ ì²˜ë¦¬í•˜ì§€ ì•ŠìŒ
 	if (CurrentState != EEnemyAIState::Skill)
 	{
 		return;
 	}
-	//½ºÅ³ »ç¿ë Á¾·á
+	//ìŠ¤í‚¬ ì‚¬ìš© ì¢…ë£Œ
 	bIsUsingSkill = false;
 
-	//ÇöÀç º¸½º¸¦ °¡Á®¿È
+	//í˜„ì¬ ë³´ìŠ¤ë¥¼ ê°€ì ¸ì˜´
 	ABossEnemy* BossEnemy = Cast<ABossEnemy>(GetPawn());
 	if (!BossEnemy)
 	{
 		return;
 	}
 
-	//°ø°İ ´ë»óÀÌ ¾øÀ¸¸é ½ÃÀÛ À§Ä¡·Î º¹±Í
-	if (!TargetActor)
+	//ê³µê²© ëŒ€ìƒì´ ì—†ê±°ë‚˜ ì£½ìœ¼ë©´ ì‹œì‘ ìœ„ì¹˜ë¡œ ë³µê·€
+	if (!TargetActor || !IsTargetAlive())
 	{
+		TargetActor = nullptr;
 		CurrentState = EEnemyAIState::Return;
 
-		//Return ¾Ö´Ï¸ŞÀÌ¼Ç Àç»ı
+		//Return ì• ë‹ˆë©”ì´ì…˜ ì¬ìƒ
 		if (BossEnemy->ReturnMontage)
 		{
 			BossEnemy->PlayAnimMontage(BossEnemy->ReturnMontage);
 		}
-		//½ÃÀÛ À§Ä¡·Î ÀÌµ¿
+		//ì‹œì‘ ìœ„ì¹˜ë¡œ ì´ë™
 		MoveToLocation(StartLocation);
 		return;
 	}
-	//Chase »óÅÂ·Î º¹±Í
+	//Chase ìƒíƒœë¡œ ë³µê·€
 	CurrentState = EEnemyAIState::Chase;
-	//Chase ¾Ö´Ï¸ŞÀÌ¼Ç Àç»ı
+	//Chase ì• ë‹ˆë©”ì´ì…˜ ì¬ìƒ
 	if (BossEnemy->ChaseMontage)
 	{
 		BossEnemy->PlayAnimMontage(BossEnemy->ChaseMontage);
 	}
-	//´Ù½Ã °ø°İ ´ë»ó ÃßÀû
+	//ë‹¤ì‹œ ê³µê²© ëŒ€ìƒ ì¶”ì 
 	MoveToActor(
 		TargetActor,
 		-1.0f,

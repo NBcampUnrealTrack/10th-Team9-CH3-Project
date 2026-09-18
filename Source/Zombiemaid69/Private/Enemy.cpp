@@ -2,6 +2,8 @@
 #include "EnemyAIController.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Kismet/GameplayStatics.h"
+#include "Components/SphereComponent.h"
+#include "Components/CapsuleComponent.h"
 #include "TimerManager.h"
 #include "LastCureGameMode.h"
 #include "LastCureGameInstance.h"
@@ -30,17 +32,40 @@ AEnemy::AEnemy()
 	//보상
 	SerumReward = 0;
 	ExpReward = 1;
+
+	//최초 감지 범위 기본값
+	DetectionRange = 1000.0f;
+	//360도 범위 감지용 Sphere 생성
+	DetectionSphere = CreateDefaultSubobject<USphereComponent>(TEXT("DetectionSphere"));
+	//Enemy의 Capsule에 감지 Sphere 부착
+	DetectionSphere->SetupAttachment(GetCapsuleComponent());
+	//감지 범위 설정
+	DetectionSphere->SetSphereRadius(DetectionRange);
+	//감지 전용이므로 물리 충돌은 사용하지 않음
+	DetectionSphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	//기본 충돌 반응은 모두 무시
+	DetectionSphere->SetCollisionResponseToAllChannels(ECR_Ignore);
+	//Pawn만 감지
+	DetectionSphere->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
+	//OverLap 이벤트 활성화
+	DetectionSphere->SetGenerateOverlapEvents(true);
 }
 
 void AEnemy::BeginPlay()
 {
 	Super::BeginPlay();
-	
+
+	//감지 범위 적용
+	DetectionSphere->SetSphereRadius(DetectionRange);
+	//감지 범위 진입 이벤트 연결
+	DetectionSphere->OnComponentBeginOverlap.AddDynamic(
+		this,
+		&AEnemy::OnDetectionBeginOverlap
+	);
 	//현재 맵에서 사용중인 게임모드를 가져옴
 	ALastCureGameMode* GM = Cast<ALastCureGameMode>(
 		UGameplayStatics::GetGameMode(this)
 	);
-	
 	//게임모드를 정상적으로 가져왔다면 남은 좀비 수를 셀 수 있도록 현재 좀비를 등록
 	if (GM)
 	{
@@ -55,6 +80,27 @@ void AEnemy::BeginPlay()
 	{
 		PlayAnimMontage(IdleMontage);
 	}
+}
+
+void AEnemy::OnDetectionBeginOverlap(
+	UPrimitiveComponent* OverlappedComponent, 
+	AActor* OtherActor, UPrimitiveComponent* OtherComp, 
+	int32 OtherBodyIndex, bool bFromSweep, 
+	const FHitResult& SweepResult)
+{
+	//감지된 대상이 없으면 처리하지 않음
+	if (!OtherActor)
+	{
+		return;
+	}
+	//현재 Enemy의 AIController 가져오기
+	AEnemyAIController* AIController = Cast<AEnemyAIController>(GetController());
+	if (!AIController)
+	{
+		return;
+	}
+	//감지된 대상을 AIController에 전달
+	AIController->OnTargetDetected(OtherActor);
 }
 
 //받는 데미지 - 추가수정(윤민)

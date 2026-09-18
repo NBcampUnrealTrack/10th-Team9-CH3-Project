@@ -8,6 +8,9 @@
 class AEnemy;
 class AController;
 
+class USphereComponent;
+class UPrimitiveComponent;
+
 /** 실제 체력 변경과 공격자 정보 전달 */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_FiveParams(
 	FEnemyHealthChangedSignature,
@@ -57,7 +60,7 @@ public:
 
 	//체력회복
 	UFUNCTION(BlueprintCallable, Category = "Enemy|Stat")
-	void RecoverHealth(float Amount);
+	void RecoverHealth(float DeltaTime);
 
 	//받는 데미지
 	virtual float TakeDamage(
@@ -114,5 +117,22 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Enemy|State")
 	bool bIsDead; //죽었는가?
 
+	//360도 범위 감지용 Sphere
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI|Detection")
+	TObjectPtr<USphereComponent> DetectionSphere;
+	//플레이어 최초 감지 거리
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI|Detection")
+	float DetectionRange;
+
 	virtual void BeginPlay() override;
+
+	UFUNCTION()
+	void OnDetectionBeginOverlap(
+		UPrimitiveComponent* OverlappedComponent,
+		AActor* OtherActor,
+		UPrimitiveComponent* OtherComp,
+		int32 OtherBodyIndex,
+		bool bFromSweep,
+		const FHitResult& SweepResult
+	);
 };
