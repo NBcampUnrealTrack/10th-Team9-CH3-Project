@@ -4,6 +4,14 @@
 ABossEnemyAIController::ABossEnemyAIController()
 {
 	bIsUsingSkill = false;
+
+	//스킬 대기시간
+	MinSkillCooldown = 8.0f;
+	MaxSkillCooldown = 12.0f;
+	//첫 스킬 대기시간 랜덤 설정
+	SkillCooldownRemaining = FMath::FRandRange(
+		MinSkillCooldown, MaxSkillCooldown
+	);
 }
 
 void ABossEnemyAIController::UseSkill()
@@ -88,6 +96,44 @@ void ABossEnemyAIController::OnBossSkillEnd()
 		true,
 		nullptr,
 		true
+	);
+}
+
+void ABossEnemyAIController::Tick(float DeltaTime)
+{
+	//기존 Enemy AI Tick 실행
+	Super::Tick(DeltaTime);
+
+	//사망 상태면 스킬 처리하지 않음
+	if (CurrentState == EEnemyAIState::Dead)
+	{
+		return;
+	}
+	//스킬 사용 중이면 대기시간 감소하지 않음
+	if (bIsUsingSkill)
+	{
+		return;
+	}
+	//스킬 대기시간 감소
+	if (SkillCooldownRemaining > 0.0f)
+	{
+		SkillCooldownRemaining -= DeltaTime;
+	}
+	//아직 스킬 대기시간이면 종료
+	if (SkillCooldownRemaining > 0.0f)
+	{
+		return;
+	}
+	//Chase 상태가 될때까지 스킬 사용 대기
+	if (CurrentState != EEnemyAIState::Chase)
+	{
+		return;
+	}
+	UseSkill(); //스킬 사용
+
+	//다음 스킬 대기시간 랜덤 설정
+	SkillCooldownRemaining = FMath::FRandRange(
+		MinSkillCooldown, MaxSkillCooldown
 	);
 }
 

@@ -546,6 +546,8 @@ void AEnemyAIController::OnMoveCompleted(
 				{
 					Enemy->PlayAnimMontage(Enemy->IdleMontage);
 				}
+				//감지 범위 안의 대상 다시 확인
+				Enemy->CheckDetectionTargets();
 			}
 		}
 		return;
@@ -572,7 +574,6 @@ void AEnemyAIController::OnMoveCompleted(
 		{
 			Enemy->PlayAnimMontage(Enemy->ReturnMontage);
 		}
-
 		//Enemy가 처음 배치되었던 위치로 이동하도록 명령
 		MoveToLocation(StartLocation);
 	}

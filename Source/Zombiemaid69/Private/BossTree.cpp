@@ -1,6 +1,7 @@
 ﻿#include "BossTree.h"
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetSystemLibrary.h"
+#include "Components/CapsuleComponent.h"
 
 ABossTree::ABossTree()
 {
@@ -16,17 +17,20 @@ ABossTree::ABossTree()
 	//내려찍기 스킬 설정
 	SkillDamage = 30.0f;
 	SkillRange = 300.0f;
+	SkillDodgeHeight = 50.0f;
 }
 
 void ABossTree::OnSkillHit()
 {
 	TArray<FHitResult> HitResults; //광역 판정 결과
-	
+
+	TSet<AActor*> DamagedActors; //이미 데미지를 받은 대상
+
 	//자기 자신은 판정에서 제외
 	TArray<AActor*> IgnoreActors;
 	IgnoreActors.Add(this);
 
-	//보스 중식으로 광역 판정
+	//보스 중심으로 광역 판정
 	const bool bHit = UKismetSystemLibrary::SphereTraceMulti(
 		GetWorld(),
 		GetActorLocation(),
@@ -60,6 +64,34 @@ void ABossTree::OnSkillHit()
 		{
 			continue;
 		}
+		//이미 데미지를 받은 대상은 제외
+		if (DamagedActors.Contains(HitActor))
+		{
+			continue;
+		}
+		//대상의 캡슐 가져오기
+		UCapsuleComponent* TargetCapsule =
+			HitActor->FindComponentByClass<UCapsuleComponent>();
+
+		if (TargetCapsule)
+		{
+			//대상의 보스의 캡슐 바닥 높이 계산
+			const float TargetBottomZ =
+				TargetCapsule->GetComponentLocation().Z -
+				TargetCapsule->GetScaledCapsuleHalfHeight();
+
+			const float BossBottomZ =
+				GetCapsuleComponent()->GetComponentLocation().Z -
+				GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
+
+			//충분히 공중에 떠 있으면 스킬 회피
+			if (TargetBottomZ - BossBottomZ >= SkillDodgeHeight)
+			{
+				continue;
+			}
+		}
+		DamagedActors.Add(HitActor); //데미지를 받은 대상으로 등록
+
 		//스킬 데미지 적용
 		UGameplayStatics::ApplyDamage(
 			HitActor,
@@ -67,6 +99,14 @@ void ABossTree::OnSkillHit()
 			GetController(),
 			this,
 			UDamageType::StaticClass()
+		);
+		//테스트용 데미지 로그
+		UE_LOG(
+			LogTemp,
+			Warning,
+			TEXT("BossTree Skill Damage -> %s / Damage: %.1f"),
+			*HitActor->GetName(),
+			SkillDamage
 		);
 	}
 }

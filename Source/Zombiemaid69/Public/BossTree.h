@@ -21,4 +21,6 @@ protected:
 	float SkillDamage; //내려찍기 데미지
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Boss|Skill")
 	float SkillRange; //내려찍기 범위
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Boss|Skill")
+	float SkillDodgeHeight; //점프 회피 높이
 };

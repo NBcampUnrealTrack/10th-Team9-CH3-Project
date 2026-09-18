@@ -62,6 +62,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Enemy|Stat")
 	void RecoverHealth(float DeltaTime);
 
+	//감지 범위 안의 대상 다시 확인
+	UFUNCTION(BlueprintCallable, Category = "AI|Detection")
+	void CheckDetectionTargets();
+
 	//받는 데미지
 	virtual float TakeDamage(
 		float DamageAmount,//이번에 받은 데미지양

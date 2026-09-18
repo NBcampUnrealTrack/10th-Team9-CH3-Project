@@ -181,6 +181,34 @@ float AEnemy::TakeDamage(
 
 	return HealthLost;
 }
+void AEnemy::CheckDetectionTargets()
+{
+	//감지 Sphere가 없으면 처리하지않음
+	if (!DetectionSphere)
+	{
+		return;
+	}
+	//현재 AIController 가져오기
+	AEnemyAIController* AIController = Cast<AEnemyAIController>(GetController());
+	if (!AIController)
+	{
+		return;
+	}
+	//현재 감지 범위 안의 Actor 가져오기
+	TArray<AActor*> OverlappingActors;
+	DetectionSphere->GetOverlappingActors(OverlappingActors);
+
+	//범위 안에 대상 다시 확인
+	for (AActor* OverlappingActor : OverlappingActors)
+	{
+		if (!OverlappingActor)
+		{
+			continue;
+		}
+		//기존 감지 로직으로 전달
+		AIController->OnTargetDetected(OverlappingActor);
+	}
+}
 
 float AEnemy::GetAttackRange() const
 {
