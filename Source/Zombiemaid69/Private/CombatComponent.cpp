@@ -1,7 +1,10 @@
 ﻿#include "CombatComponent.h"
+#include "PerkComponent.h"
+#include "WeaponBase.h"
 #include "Kismet/GameplayStatics.h"
 #include "GameFramework/Character.h"
 #include "Camera/CameraComponent.h"
+#include "Components/SkeletalMeshComponent.h"
 
 UCombatComponent::UCombatComponent()
 {
@@ -13,15 +16,85 @@ void UCombatComponent::BeginPlay()
 {
 	Super::BeginPlay();
 
-	// 게임 시작 시 탄창을 가득 채운 상태로 초기화
-	CurrentAmmoInClip = MaxAmmoInClip;
+	// 시작 시 0번 슬롯 무기를 기본 장착
+	if (WeaponClasses.Num() > 0)
+	{
+		SwitchWeapon(0);
+	}
+}
 
-	// 초기 탄약 상태를 UI에 알림
-	OnAmmoChanged.Broadcast(CurrentAmmoInClip, ReserveAmmo);
+void UCombatComponent::SwitchWeapon(int32 SlotIndex)
+{
+	// 유효하지 않은 슬롯 번호면 무시
+	if (!WeaponClasses.IsValidIndex(SlotIndex))
+	{
+		return;
+	}
+
+	// 재장전 중에는 무기 교체를 막음
+	if (bIsReloading)
+	{
+		return;
+	}
+
+	AActor* OwnerActor = GetOwner();
+	if (!OwnerActor)
+	{
+		return;
+	}
+
+	// 기존에 들고 있던 무기가 있다면 제거
+	if (EquippedWeapon)
+	{
+		EquippedWeapon->Destroy();
+		EquippedWeapon = nullptr;
+	}
+
+	// 선택한 슬롯의 무기 클래스로 새 무기 액터를 스폰
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.Owner = OwnerActor;
+
+	EquippedWeapon = GetWorld()->SpawnActor<AWeaponBase>(WeaponClasses[SlotIndex], SpawnParams);
+
+	if (EquippedWeapon)
+	{
+		// 무기를 캐릭터의 1인칭 팔 메시 손 소켓에 부착
+		ACharacter* OwnerCharacter = Cast<ACharacter>(OwnerActor);
+		if (OwnerCharacter)
+		{
+			USkeletalMeshComponent* CharacterMesh = OwnerCharacter->FindComponentByClass<USkeletalMeshComponent>();
+			if (CharacterMesh)
+			{
+				EquippedWeapon->AttachToComponent(
+					CharacterMesh,
+					FAttachmentTransformRules::SnapToTargetNotIncludingScale,
+					WeaponSocketName
+				);
+			}
+		}
+
+		// 새로 장착한 무기에 이미 보유한 특전을 재적용
+		if (AActor* PerkOwnerActor = GetOwner())
+		{
+			if (UPerkComponent* Perks = OwnerActor->FindComponentByClass<UPerkComponent>())
+			{
+				Perks->ReapplyWeaponPerks(EquippedWeapon);
+			}
+		}
+
+		// 무기 교체 시 탄약 UI 갱신
+		OnAmmoChanged.Broadcast(EquippedWeapon->CurrentAmmoInClip, EquippedWeapon->ReserveAmmo);
+	}
 }
 
 void UCombatComponent::Fire()
 {
+	// 장착된 무기가 없으면 발사 불가
+	if (!EquippedWeapon)
+	{
+		return;
+	}
+
 	// 재장전 중이면 발사 불가
 	if (bIsReloading)
 	{
@@ -40,7 +113,7 @@ void UCombatComponent::Fire()
 	const float CurrentTime = GetWorld()->GetTimeSeconds();
 
 	// 마지막 발사 시점으로부터 발사 간격(FireRate)이 지나지 않았다면 발사 거부 (연사속도 제한)
-	if (CurrentTime - LastFireTime < FireRate)
+	if (CurrentTime - LastFireTime < EquippedWeapon->FireRate)
 	{
 		return;
 	}
@@ -52,10 +125,10 @@ void UCombatComponent::Fire()
 	PerformHitTrace();
 
 	// 탄창에서 탄약 1발 소모
-	CurrentAmmoInClip--;
+	EquippedWeapon->CurrentAmmoInClip--;
 
 	// 탄약 변경 사항을 UI에 알림
-	OnAmmoChanged.Broadcast(CurrentAmmoInClip, ReserveAmmo);
+	OnAmmoChanged.Broadcast(EquippedWeapon->CurrentAmmoInClip, EquippedWeapon->ReserveAmmo);
 
 	// 총 발사 사운드를 재생할 자리
 	// TODO: 총기 발사(Fire) 사운드 재생 코드 추가 예정
@@ -63,6 +136,12 @@ void UCombatComponent::Fire()
 
 void UCombatComponent::PerformHitTrace()
 {
+	// 장착된 무기가 없으면 트레이스 수행 안 함
+	if (!EquippedWeapon)
+	{
+		return;
+	}
+
 	// 이 컴포넌트를 소유한 액터(캐릭터)를 가져옴
 	AActor* OwnerActor = GetOwner();
 	if (!OwnerActor)
@@ -91,7 +170,7 @@ void UCombatComponent::PerformHitTrace()
 	const FVector ForwardVector = CameraComp->GetForwardVector();
 
 	// 트레이스 종료 지점 = 시작 지점에서 정면 방향으로 사거리만큼 이동한 지점
-	const FVector EndLocation = StartLocation + (ForwardVector * FireRange);
+	const FVector EndLocation = StartLocation + (ForwardVector * EquippedWeapon->FireRange);
 
 	// 라인트레이스 결과를 담을 구조체
 	FHitResult HitResult;
@@ -101,6 +180,9 @@ void UCombatComponent::PerformHitTrace()
 
 	// 트레이스가 자기 자신(발사한 캐릭터)에게는 맞지 않도록 무시 대상으로 등록
 	QueryParams.AddIgnoredActor(OwnerActor);
+
+	// 무기 자신도 트레이스에서 제외
+	QueryParams.AddIgnoredActor(EquippedWeapon);
 
 	// 실제 라인트레이스 실행 (Visibility 채널 기준으로 충돌 검사)
 	const bool bHit = GetWorld()->LineTraceSingleByChannel(
@@ -118,7 +200,7 @@ void UCombatComponent::PerformHitTrace()
 		// 이 함수가 내부적으로 대상 액터의 TakeDamage()를 자동으로 호출해줌
 		UGameplayStatics::ApplyPointDamage(
 			HitResult.GetActor(),
-			WeaponDamage,
+			EquippedWeapon->WeaponDamage,
 			ForwardVector,
 			HitResult,
 			OwnerCharacter->GetController(),
@@ -133,6 +215,12 @@ void UCombatComponent::PerformHitTrace()
 
 void UCombatComponent::StartReload()
 {
+	// 장착된 무기가 없으면 재장전 불가
+	if (!EquippedWeapon)
+	{
+		return;
+	}
+
 	// 이미 재장전 중이면 중복 실행 방지
 	if (bIsReloading)
 	{
@@ -140,13 +228,13 @@ void UCombatComponent::StartReload()
 	}
 
 	// 탄창이 이미 가득 찼다면 재장전할 필요 없음
-	if (CurrentAmmoInClip >= MaxAmmoInClip)
+	if (EquippedWeapon->CurrentAmmoInClip >= EquippedWeapon->MaxAmmoInClip)
 	{
 		return;
 	}
 
 	// 예비 탄약이 없다면 재장전 불가
-	if (ReserveAmmo <= 0)
+	if (EquippedWeapon->ReserveAmmo <= 0)
 	{
 		return;
 	}
@@ -162,30 +250,44 @@ void UCombatComponent::StartReload()
 		ReloadTimerHandle,
 		this,
 		&UCombatComponent::FinishReload,
-		ReloadDuration,
+		EquippedWeapon->ReloadDuration,
 		false
 	);
 }
 
 void UCombatComponent::FinishReload()
 {
+	// 장착된 무기가 없으면 처리하지 않음 (재장전 도중 무기가 사라진 예외 상황 대비)
+	if (!EquippedWeapon)
+	{
+		bIsReloading = false;
+		return;
+	}
+
 	// 탄창을 채우는 데 필요한 탄약 수 계산 (최대치 - 현재 남은 탄약)
-	const int32 AmmoNeeded = MaxAmmoInClip - CurrentAmmoInClip;
+	const int32 AmmoNeeded = EquippedWeapon->MaxAmmoInClip - EquippedWeapon->CurrentAmmoInClip;
 
 	// 실제로 채울 수 있는 양은 필요한 양과 예비 탄약 중 더 작은 값
-	const int32 AmmoToReload = FMath::Min(AmmoNeeded, ReserveAmmo);
+	const int32 AmmoToReload = FMath::Min(AmmoNeeded, EquippedWeapon->ReserveAmmo);
 
 	// 탄창에 탄약 추가
-	CurrentAmmoInClip += AmmoToReload;
+	EquippedWeapon->CurrentAmmoInClip += AmmoToReload;
 
 	// 예비 탄약에서 사용한 만큼 차감
-	ReserveAmmo -= AmmoToReload;
+	EquippedWeapon->ReserveAmmo -= AmmoToReload;
 
 	// 재장전 상태 해제
 	bIsReloading = false;
 
 	// 변경된 탄약 정보를 UI에 알림
-	OnAmmoChanged.Broadcast(CurrentAmmoInClip, ReserveAmmo);
+	OnAmmoChanged.Broadcast(EquippedWeapon->CurrentAmmoInClip, EquippedWeapon->ReserveAmmo);
+}
+
+bool UCombatComponent::HasAmmo() const
+{
+	// cpp에서는 WeaponBase.h가 이미 #include 되어 있어서 완전한 타입 정보를 알고 있으므로
+	// EquippedWeapon의 멤버에 안전하게 접근 가능
+	return EquippedWeapon && EquippedWeapon->CurrentAmmoInClip > 0;
 }
 
 void UCombatComponent::StartAim()

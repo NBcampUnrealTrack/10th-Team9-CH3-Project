@@ -6,6 +6,7 @@
 
 class UStatsComponent;
 class UCombatComponent;
+class AWeaponBase;
 
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
 class ZOMBIEMAID69_API UPerkComponent : public UActorComponent
@@ -77,6 +78,10 @@ public:
 	/** 좀비를 처치했을 때 호출 (처치 회복 특전 보유 시 체력 회복 처리) */
 	UFUNCTION(BlueprintCallable, Category = "Perks")
 	void HandleEnemyKilled();
+
+	/** 무기를 교체했을 때, 이미 보유한 무기 관련 특전(탄창, 재장전)을 새 무기에 다시 적용 */
+	UFUNCTION(BlueprintCallable, Category = "Perks")
+	void ReapplyWeaponPerks(AWeaponBase* TargetWeapon);
 
 protected:
 	virtual void BeginPlay() override;

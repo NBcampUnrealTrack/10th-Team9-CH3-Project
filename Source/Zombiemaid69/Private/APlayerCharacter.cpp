@@ -217,6 +217,38 @@ void AAPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 			&AAPlayerCharacter::DoAimEnd
 		);
 
+		// 1번 키를 누르면 0번 슬롯(권총)으로 무기 교체
+		EnhancedInputComponent->BindAction(
+			Weapon1Action,
+			ETriggerEvent::Started,
+			this,
+			&AAPlayerCharacter::DoSwitchWeapon1
+		);
+
+		// 2번 키를 누르면 1번 슬롯(소총)으로 무기 교체
+		EnhancedInputComponent->BindAction(
+			Weapon2Action,
+			ETriggerEvent::Started,
+			this,
+			&AAPlayerCharacter::DoSwitchWeapon2
+		);
+
+		// 3번 키를 누르면 2번 슬롯(샷건)으로 무기 교체
+		EnhancedInputComponent->BindAction(
+			Weapon3Action,
+			ETriggerEvent::Started,
+			this,
+			&AAPlayerCharacter::DoSwitchWeapon3
+		);
+
+		// 4번 키를 누르면 3번 슬롯(스나이퍼)으로 무기 교체
+		EnhancedInputComponent->BindAction(
+			Weapon4Action,
+			ETriggerEvent::Started,
+			this,
+			&AAPlayerCharacter::DoSwitchWeapon4
+		);
+
 		// 디버그: 경험치 추가 (테스트용)
 		EnhancedInputComponent->BindAction(
 			DebugAddEXPAction,
@@ -395,6 +427,42 @@ void AAPlayerCharacter::DoAimEnd()
 	if (CombatComponent)
 	{
 		CombatComponent->StopAim();
+	}
+}
+
+void AAPlayerCharacter::DoSwitchWeapon1()
+{
+	// CombatComponent가 유효하면 0번 슬롯(권총) 무기로 교체
+	if (CombatComponent)
+	{
+		CombatComponent->SwitchWeapon(0);
+	}
+}
+
+void AAPlayerCharacter::DoSwitchWeapon2()
+{
+	// CombatComponent가 유효하면 1번 슬롯(소총) 무기로 교체
+	if (CombatComponent)
+	{
+		CombatComponent->SwitchWeapon(1);
+	}
+}
+
+void AAPlayerCharacter::DoSwitchWeapon3()
+{
+	// CombatComponent가 유효하면 2번 슬롯(샷건) 무기로 교체
+	if (CombatComponent)
+	{
+		CombatComponent->SwitchWeapon(2);
+	}
+}
+
+void AAPlayerCharacter::DoSwitchWeapon4()
+{
+	// CombatComponent가 유효하면 3번 슬롯(스나이퍼) 무기로 교체
+	if (CombatComponent)
+	{
+		CombatComponent->SwitchWeapon(3);
 	}
 }
 

@@ -67,6 +67,22 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Input")
 	UInputAction* AimAction;
 
+	/** 1번 슬롯(권총) 교체 Input Action */
+	UPROPERTY(EditAnywhere, Category = "Input")
+	UInputAction* Weapon1Action;
+
+	/** 2번 슬롯(소총) 교체 Input Action */
+	UPROPERTY(EditAnywhere, Category = "Input")
+	UInputAction* Weapon2Action;
+
+	/** 3번 슬롯(샷건) 교체 Input Action */
+	UPROPERTY(EditAnywhere, Category = "Input")
+	UInputAction* Weapon3Action;
+
+	/** 4번 슬롯(스나이퍼) 교체 Input Action */
+	UPROPERTY(EditAnywhere, Category = "Input")
+	UInputAction* Weapon4Action;
+
 	/** 전투(발사/재장전) 컴포넌트 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
 	class UCombatComponent* CombatComponent;
@@ -152,6 +168,22 @@ protected:
 	/** 우클릭을 뗐을 때 호출 (조준 종료) */
 	UFUNCTION(BlueprintCallable, Category = "Combat")
 	virtual void DoAimEnd();
+
+	/** 1번 키를 눌렀을 때 호출 (0번 슬롯 무기로 교체) */
+	UFUNCTION(BlueprintCallable, Category = "Combat")
+	virtual void DoSwitchWeapon1();
+
+	/** 2번 키를 눌렀을 때 호출 (1번 슬롯 무기로 교체) */
+	UFUNCTION(BlueprintCallable, Category = "Combat")
+	virtual void DoSwitchWeapon2();
+
+	/** 3번 키를 눌렀을 때 호출 (2번 슬롯 무기로 교체) */
+	UFUNCTION(BlueprintCallable, Category = "Combat")
+	virtual void DoSwitchWeapon3();
+
+	/** 4번 키를 눌렀을 때 호출 (3번 슬롯 무기로 교체) */
+	UFUNCTION(BlueprintCallable, Category = "Combat")
+	virtual void DoSwitchWeapon4();
 
 	/** StatsComponent의 OnDeath 델리게이트에 의해 자동 호출되는 사망 처리 콜백 */
 	UFUNCTION()
