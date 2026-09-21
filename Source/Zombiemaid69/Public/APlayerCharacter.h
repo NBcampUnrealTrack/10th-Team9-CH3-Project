@@ -63,13 +63,41 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Input")
 	UInputAction* ReloadAction;
 
+	/** 붕대 사용 Input Action (X키) */
+	UPROPERTY(EditAnywhere, Category = "Input")
+	UInputAction* UseBandageAction;
+
+	/** 주사기 사용 Input Action (Z키) */
+	UPROPERTY(EditAnywhere, Category = "Input")
+	UInputAction* UseSyringeAction;
+
 	/** 조준 Input Action(우클릭) */
 	UPROPERTY(EditAnywhere, Category = "Input")
 	UInputAction* AimAction;
 
+	/** 1번 슬롯(권총) 교체 Input Action */
+	UPROPERTY(EditAnywhere, Category = "Input")
+	UInputAction* Weapon1Action;
+
+	/** 2번 슬롯(소총) 교체 Input Action */
+	UPROPERTY(EditAnywhere, Category = "Input")
+	UInputAction* Weapon2Action;
+
+	/** 3번 슬롯(샷건) 교체 Input Action */
+	UPROPERTY(EditAnywhere, Category = "Input")
+	UInputAction* Weapon3Action;
+
+	/** 4번 슬롯(스나이퍼) 교체 Input Action */
+	UPROPERTY(EditAnywhere, Category = "Input")
+	UInputAction* Weapon4Action;
+
 	/** 전투(발사/재장전) 컴포넌트 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
 	class UCombatComponent* CombatComponent;
+
+	/** 회복 아이템(붕대/주사기)을 관리하는 컴포넌트 */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
+	class UHealingComponent* HealingComponent;
 
 	/** 레벨업 특전(Perk)을 관리하는 컴포넌트 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
@@ -145,6 +173,14 @@ protected:
 	UFUNCTION(BlueprintCallable, Category = "Combat")
 	virtual void DoReload();
 
+	/** X키를 눌렀을 때 호출 (붕대 사용) */
+	UFUNCTION(BlueprintCallable, Category = "Healing")
+	virtual void DoUseBandage();
+
+	/** Z키를 눌렀을 때 호출 (주사기 사용) */
+	UFUNCTION(BlueprintCallable, Category = "Healing")
+	virtual void DoUseSyringe();
+
 	/** 우클릭을 눌렀을 때 호출(조준 시작) */
 	UFUNCTION(BlueprintCallable, Category = "Combat")
 	virtual void DoAimStart();
@@ -152,6 +188,22 @@ protected:
 	/** 우클릭을 뗐을 때 호출 (조준 종료) */
 	UFUNCTION(BlueprintCallable, Category = "Combat")
 	virtual void DoAimEnd();
+
+	/** 1번 키를 눌렀을 때 호출 (0번 슬롯 무기로 교체) */
+	UFUNCTION(BlueprintCallable, Category = "Combat")
+	virtual void DoSwitchWeapon1();
+
+	/** 2번 키를 눌렀을 때 호출 (1번 슬롯 무기로 교체) */
+	UFUNCTION(BlueprintCallable, Category = "Combat")
+	virtual void DoSwitchWeapon2();
+
+	/** 3번 키를 눌렀을 때 호출 (2번 슬롯 무기로 교체) */
+	UFUNCTION(BlueprintCallable, Category = "Combat")
+	virtual void DoSwitchWeapon3();
+
+	/** 4번 키를 눌렀을 때 호출 (3번 슬롯 무기로 교체) */
+	UFUNCTION(BlueprintCallable, Category = "Combat")
+	virtual void DoSwitchWeapon4();
 
 	/** StatsComponent의 OnDeath 델리게이트에 의해 자동 호출되는 사망 처리 콜백 */
 	UFUNCTION()
@@ -187,6 +239,7 @@ public:
 	UStatsComponent* GetStatsComponent() const { return StatsComponent; }
 	UCombatComponent* GetCombatComponent() const { return CombatComponent; }
 	UPerkComponent* GetPerkComponent() const { return PerkComponent; }
+	UHealingComponent* GetHealingComponent() const { return HealingComponent; }
 
 protected:
 	/** 디버그용 경험치 추가 Input Action */

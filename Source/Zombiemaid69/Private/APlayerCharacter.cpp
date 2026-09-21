@@ -9,6 +9,7 @@
 #include "StatsComponent.h"
 #include "CombatComponent.h"
 #include "PerkComponent.h"
+#include "HealingComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Zombiemaid69.h"
 #include "LastCureGameMode.h"
@@ -61,6 +62,9 @@ AAPlayerCharacter::AAPlayerCharacter()
 
 	// 레벨업 특전 컴포넌트 생성 및 부착
 	PerkComponent = CreateDefaultSubobject<UPerkComponent>(TEXT("PerkComponent"));
+
+	// 회복 아이템(붕대/주사기) 관리 컴포넌트 생성 및 부착
+	HealingComponent = CreateDefaultSubobject<UHealingComponent>(TEXT("HealingComponent"));
 
 	// 카메라의 기본 시야각을 DefaultFOV로 맞춰서 시작 (에디터에서 카메라에 직접 설정한 값과 어긋나지 않도록 주의)
 	FirstPersonCameraComponent->FieldOfView = DefaultFOV;
@@ -127,6 +131,13 @@ void AAPlayerCharacter::Tick(float DeltaTime)
 				GetCharacterMovement()->MaxWalkSpeed = BaseWalkSpeed;
 			}
 		}
+	}
+
+	// 회복 아이템 사용 중 이동속도 감소 처리
+	// 스프린트, 조준 상태와 무관하게 아이템 사용 중이면 항상 최우선으로 감속 적용
+	if (HealingComponent && HealingComponent->bIsUsingItem)
+	{
+		GetCharacterMovement()->MaxWalkSpeed = BaseWalkSpeed * HealingComponent->UsingWalkSpeedMultiplier;
 	}
 }
 
@@ -202,6 +213,22 @@ void AAPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 			&AAPlayerCharacter::DoReload
 		);
 
+		// X키를 누르면 DoUseBandage 호출
+		EnhancedInputComponent->BindAction(
+			UseBandageAction,
+			ETriggerEvent::Started,
+			this,
+			&AAPlayerCharacter::DoUseBandage
+		);
+
+		// Z키를 누르면 DoUseSyringe 호출
+		EnhancedInputComponent->BindAction(
+			UseSyringeAction,
+			ETriggerEvent::Started,
+			this,
+			&AAPlayerCharacter::DoUseSyringe
+		);
+
 		// 우클릭을 누르면 DoAimStart 호출, 떼면 DoAimEnd 호출
 		EnhancedInputComponent->BindAction(
 			AimAction, 
@@ -215,6 +242,38 @@ void AAPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 			ETriggerEvent::Completed,
 			this, 
 			&AAPlayerCharacter::DoAimEnd
+		);
+
+		// 1번 키를 누르면 0번 슬롯(권총)으로 무기 교체
+		EnhancedInputComponent->BindAction(
+			Weapon1Action,
+			ETriggerEvent::Started,
+			this,
+			&AAPlayerCharacter::DoSwitchWeapon1
+		);
+
+		// 2번 키를 누르면 1번 슬롯(소총)으로 무기 교체
+		EnhancedInputComponent->BindAction(
+			Weapon2Action,
+			ETriggerEvent::Started,
+			this,
+			&AAPlayerCharacter::DoSwitchWeapon2
+		);
+
+		// 3번 키를 누르면 2번 슬롯(샷건)으로 무기 교체
+		EnhancedInputComponent->BindAction(
+			Weapon3Action,
+			ETriggerEvent::Started,
+			this,
+			&AAPlayerCharacter::DoSwitchWeapon3
+		);
+
+		// 4번 키를 누르면 3번 슬롯(스나이퍼)으로 무기 교체
+		EnhancedInputComponent->BindAction(
+			Weapon4Action,
+			ETriggerEvent::Started,
+			this,
+			&AAPlayerCharacter::DoSwitchWeapon4
 		);
 
 		// 디버그: 경험치 추가 (테스트용)
@@ -331,6 +390,24 @@ void AAPlayerCharacter::DoReload()
 	}
 }
 
+void AAPlayerCharacter::DoUseBandage()
+{
+	// HealingComponent가 유효하면 붕대 사용 로직 위임
+	if (HealingComponent)
+	{
+		HealingComponent->UseBandage();
+	}
+}
+
+void AAPlayerCharacter::DoUseSyringe()
+{
+	// HealingComponent가 유효하면 주사기 사용 로직 위임
+	if (HealingComponent)
+	{
+		HealingComponent->UseSyringe();
+	}
+}
+
 float AAPlayerCharacter::TakeDamage(
 	float DamageAmount,
 	FDamageEvent const& DamageEvent,
@@ -395,6 +472,42 @@ void AAPlayerCharacter::DoAimEnd()
 	if (CombatComponent)
 	{
 		CombatComponent->StopAim();
+	}
+}
+
+void AAPlayerCharacter::DoSwitchWeapon1()
+{
+	// CombatComponent가 유효하면 0번 슬롯(권총) 무기로 교체
+	if (CombatComponent)
+	{
+		CombatComponent->SwitchWeapon(0);
+	}
+}
+
+void AAPlayerCharacter::DoSwitchWeapon2()
+{
+	// CombatComponent가 유효하면 1번 슬롯(소총) 무기로 교체
+	if (CombatComponent)
+	{
+		CombatComponent->SwitchWeapon(1);
+	}
+}
+
+void AAPlayerCharacter::DoSwitchWeapon3()
+{
+	// CombatComponent가 유효하면 2번 슬롯(샷건) 무기로 교체
+	if (CombatComponent)
+	{
+		CombatComponent->SwitchWeapon(2);
+	}
+}
+
+void AAPlayerCharacter::DoSwitchWeapon4()
+{
+	// CombatComponent가 유효하면 3번 슬롯(스나이퍼) 무기로 교체
+	if (CombatComponent)
+	{
+		CombatComponent->SwitchWeapon(3);
 	}
 }
 
