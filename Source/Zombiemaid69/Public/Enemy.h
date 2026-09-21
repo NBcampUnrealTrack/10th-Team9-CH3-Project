@@ -1,12 +1,21 @@
 ﻿#pragma once
 
 #include "CoreMinimal.h"
+
 #include "GameFramework/Character.h"
 #include "Enemy.generated.h"
+
+
 
 // 윤민 추가작성 - Colleague와 Enemy를 호환하기위한 코드 작성부(시작지점)
 class AEnemy;
 class AController;
+
+class AActor;
+class ASerum;
+
+class USphereComponent;
+class UPrimitiveComponent;
 
 /** 실제 체력 변경과 공격자 정보 전달 */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_FiveParams(
@@ -57,7 +66,15 @@ public:
 
 	//체력회복
 	UFUNCTION(BlueprintCallable, Category = "Enemy|Stat")
-	void RecoverHealth(float Amount);
+	void RecoverHealth(float DeltaTime);
+
+	//감지 범위 안의 대상 다시 확인
+	UFUNCTION(BlueprintCallable, Category = "AI|Detection")
+	void CheckDetectionTargets();
+
+	//피격 데미지 표시
+	UFUNCTION(BlueprintCallable, Category = "Enemy|Damage")
+	void ShowDamageNumber(float Damage);
 
 	//받는 데미지
 	virtual float TakeDamage(
@@ -110,9 +127,36 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy|Reward")
 	int32 ExpReward; //경험치 보상
 
+	//드랍할 혈청 클래스
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Enemy|Reward")
+	TSubclassOf<ASerum> SerumClass;
+
 	//스테이트
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Enemy|State")
 	bool bIsDead; //죽었는가?
 
+	//360도 범위 감지용 Sphere
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI|Detection")
+	TObjectPtr<USphereComponent> DetectionSphere;
+	//플레이어 최초 감지 거리
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI|Detection")
+	float DetectionRange;
+
+	//피격 데미지 숫자 Actor
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy|Damage")
+	TSubclassOf<AActor> DamageNumberClass;
+
 	virtual void BeginPlay() override;
+
+	UFUNCTION()
+	void OnDetectionBeginOverlap(
+		UPrimitiveComponent* OverlappedComponent,
+		AActor* OtherActor,
+		UPrimitiveComponent* OtherComp,
+		int32 OtherBodyIndex,
+		bool bFromSweep,
+		const FHitResult& SweepResult
+	);
+
+
 };

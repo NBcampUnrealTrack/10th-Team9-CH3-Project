@@ -1,14 +1,18 @@
-#include "BossEnemy.h"
+ï»¿#include "BossEnemy.h"
+#include "BossEnemyAIController.h"
 
 ABossEnemy::ABossEnemy()
 {
-	//½ºÅ³ ¸ùÅ¸ÁÖ ÃÊ±âÈ­
+	//ë³´ìŠ¤ ì „ìš© AIController ì‚¬ìš©
+	AIControllerClass = ABossEnemyAIController::StaticClass();
+
+	//ìŠ¤í‚¬ ëª½íƒ€ì£¼ ì´ˆê¸°í™”
 	SkillMontage = nullptr;
 }
 
 void ABossEnemy::PlaySkill()
 {
-	//½ºÅ³ ¾Ö´Ï¸ŞÀÌ¼Ç Àç»ı
+	//ìŠ¤í‚¬ ì• ë‹ˆë©”ì´ì…˜ ì¬ìƒ
 	if (SkillMontage)
 	{
 		PlayAnimMontage(SkillMontage);

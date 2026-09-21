@@ -168,3 +168,18 @@ void UStatsComponent::HandleDamage(float DamageAmount, AActor* DamageCauser)
 		OnDeath.Broadcast();
 	}
 }
+
+void UStatsComponent::HealHealth(float HealAmount)
+{
+	// 이미 죽은 상태라면 회복하지 않음
+	if (bIsDead)
+	{
+		return;
+	}
+
+	// 체력을 회복시키되 최대 체력을 넘지 않도록 Clamp
+	CurrentHealth = FMath::Clamp(CurrentHealth + HealAmount, 0.0f, MaxHealth);
+
+	// 체력 변경을 UI 등에 알림
+	OnHealthChanged.Broadcast(CurrentHealth, MaxHealth);
+}

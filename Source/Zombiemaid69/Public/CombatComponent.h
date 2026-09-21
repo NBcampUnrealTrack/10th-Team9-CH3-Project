@@ -4,6 +4,7 @@
 #include "Components/ActorComponent.h"
 #include "CombatComponent.generated.h"
 
+class AWeaponBase;
 
 /** 탄약 상태가 바뀔 때 UI(탄약 표시)에서 구독할 델리게이트 */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnAmmoChanged, int32, CurrentAmmo, int32, ReserveAmmo);
@@ -16,33 +17,17 @@ class ZOMBIEMAID69_API UCombatComponent : public UActorComponent
 public:
 	UCombatComponent();
 
-	/** 한 발당 데미지량 */
+	/** 1~4번 슬롯에 대응하는 무기 클래스 목록 (에디터에서 BP_Pistol, BP_Rifle, BP_Shotgun, BP_Sniper 순서로 등록) */
 	UPROPERTY(EditAnywhere, Category = "Combat|Weapon")
-	float WeaponDamage = 20.0f;
+	TArray<TSubclassOf<AWeaponBase>> WeaponClasses;
 
-	/** 사거리 (트레이스가 뻗어나가는 최대 거리, 단위: cm) */
-	UPROPERTY(EditAnywhere, Category = "Combat|Weapon")
-	float FireRange = 10000.0f;
-
-	/** 발사 간격(초) - 이 시간이 지나야 다시 발사 가능 (연사 속도 제한) */
-	UPROPERTY(EditAnywhere, Category = "Combat|Weapon")
-	float FireRate = 0.15f;
-
-	/** 탄창에 들어가는 최대 탄약 수 */
-	UPROPERTY(EditAnywhere, Category = "Combat|Weapon")
-	int32 MaxAmmoInClip = 12;
-
-	/** 현재 탄창에 남은 탄약 수 */
+	/** 현재 장착 중인 무기 인스턴스 */
 	UPROPERTY(BlueprintReadOnly, Category = "Combat|Weapon")
-	int32 CurrentAmmoInClip;
+	AWeaponBase* EquippedWeapon;
 
-	/** 예비 탄약(탄창 밖 여분 탄약) 수 */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Combat|Weapon")
-	int32 ReserveAmmo = 90;
-
-	/** 재장전에 걸리는 시간(초) */
+	/** 무기를 부착할 소켓 이름 (1인칭 팔 메시의 손 소켓) */
 	UPROPERTY(EditAnywhere, Category = "Combat|Weapon")
-	float ReloadDuration = 1.8f;
+	FName WeaponSocketName = "hand_r";
 
 	/** 현재 재장전 중인지 여부 */
 	UPROPERTY(BlueprintReadOnly, Category = "Combat|State")
@@ -59,7 +44,11 @@ public:
 	/** 발사 시도 (좌클릭을 누른 순간 캐릭터에서 호출) */
 	UFUNCTION(BlueprintCallable, Category = "Combat")
 	void Fire();
-	
+
+	/** 특정 슬롯 번호(0~3)의 무기로 교체하는 함수 */
+	UFUNCTION(BlueprintCallable, Category = "Combat")
+	void SwitchWeapon(int32 SlotIndex);
+
 	/** 조준 시작  */
 	UFUNCTION(BlueprintCallable, Category = "Combat")
 	void StartAim();
@@ -72,9 +61,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Combat")
 	void StartReload();
 
-	/** 현재 탄창에 탄약이 있는지 확인하는 헬퍼 함수 */
+	/** 현재 탄창에 탄약이 있는지 확인하는 헬퍼 함수 (EquippedWeapon 기준으로 체크) */
 	UFUNCTION(BlueprintCallable, Category = "Combat")
-	bool HasAmmo() const { return CurrentAmmoInClip > 0; }
+	bool HasAmmo() const;
 
 protected:
 	/** 게임 시작 시 한 번 호출되는 언리얼 기본 함수 */
