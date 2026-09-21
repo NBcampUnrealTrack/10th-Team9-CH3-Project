@@ -1,9 +1,9 @@
 ﻿#include "EnemyAIController.h"
 #include "Enemy.h"
+#include "APlayerCharacter.h"
+#include "StatsComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Kismet/GameplayStatics.h"
-#include "Perception/AIPerceptionComponent.h"
-#include "Perception/AIsenseConfig_Sight.h"
 #include "Animation/AnimMontage.h"
 #include "Animation/AnimInstance.h"
 #include "Navigation/PathFollowingComponent.h"
@@ -15,58 +15,44 @@ AEnemyAIController::AEnemyAIController()
 {
 	PrimaryActorTick.bCanEverTick = true;
 
-	// AI의 시야 감지 기본값 설정
-	SightRadius = 500.0f;
-	LoseSightRadius = 600.0f;
-	PeripheralVisionAngle = 90.0f;
-
 	//최대 추적 거리
-	MaxChaseDistance = 10000.0f;
-
+	MaxChaseDistance = 2000.0f;
 	//현재 공격 대상이 없도록 초기화
 	TargetActor = nullptr;
-
-	bIsStunned = false; // 경직관련
-
-	//AI가 주변 대상을 감지할 수 있도록 AI Perception 컴포넌트를 생성
-	AIPerceptionComponent = CreateDefaultSubobject<UAIPerceptionComponent>(TEXT("AIPerceptionComponent"));
-
-	//AI가 사용할 시야 감지 설정을 생성
-	SightConfig = CreateDefaultSubobject<UAISenseConfig_Sight>(TEXT("SightConfig"));
-
-	//언리얼 에디터에서 설정한 시야 거리를 AI Perception에 적용
-	SightConfig->SightRadius = SightRadius;
-	//언리얼 에디터에서 설정한 시야 유지 거리를 AI Perception에 적용
-	SightConfig->LoseSightRadius = LoseSightRadius;
-	//언리얼 에디터에서 설정한 시야각을 AI Perception에 적용
-	SightConfig->PeripheralVisionAngleDegrees = PeripheralVisionAngle;
-
-	// AI가 어떤 진영의 Actor를 감지할지 설정
-	// 모든 진영을 감지하도록 설정하여 Player와 PlayerAlly를 감지할 수 있게 함
-	SightConfig->DetectionByAffiliation.bDetectEnemies = true;
-	SightConfig->DetectionByAffiliation.bDetectNeutrals = true;
-	SightConfig->DetectionByAffiliation.bDetectFriendlies = true;
-
-	//감지를 위한 감지 설정을 Perception 컴포넌트에 등록
-	AIPerceptionComponent->ConfigureSense(*SightConfig);
-
-	//시야 감지를 기본 감지 방식으로 설정
-	AIPerceptionComponent->SetDominantSense(SightConfig->GetSenseImplementation());
-
-	//AI의 시작 상태를 Idel로 설정
+	//경직 상태 초기화
+	bIsStunned = false;
+	//AI의 시작 상태를 Idel로 바꿈
 	CurrentState = EEnemyAIState::Idle;
+}
+
+bool AEnemyAIController::IsTargetAlive() const
+{
+	//현재 타겟이 없으면 살아있지 않음
+	if (!TargetActor)
+	{
+		return false;
+	}
+	//현재 타겟이 Player인지 확인
+	AAPlayerCharacter* Player = Cast<AAPlayerCharacter>(TargetActor);
+	if (!Player)
+	{
+		return true;
+	}
+	//Player의 StatsComponent 가져오기
+	UStatsComponent* StatsComponent = Player->GetStatsComponent();
+	if (!StatsComponent)
+	{
+		return false;
+	}
+	//Player의 생존 상태 반환
+	return StatsComponent->IsAlive();
 }
 
 void AEnemyAIController::BeginPlay()
 {
 	Super::BeginPlay();
 
-	//AI Perception에서 대상의 감지 상태가 변경될 때 호출될 함수를 연결
-	AIPerceptionComponent->OnTargetPerceptionUpdated.AddDynamic(
-		this,
-		&AEnemyAIController::OnTargetPerceptionUpdated
-	);
-
+	//현재 Enemy의 시작 위치와 방향 저장
 	if (GetPawn())
 	{
 		StartLocation = GetPawn()->GetActorLocation();
@@ -112,92 +98,6 @@ bool AEnemyAIController::CanReachTarget(AActor* Actor) const
 		!NavigationPath->IsPartial();
 }
 
-void AEnemyAIController::OnTargetPerceptionUpdated(AActor* Actor, FAIStimulus Stimulus)
-{
-	//사망 상태에서는 감지하지 않음
-	if (CurrentState == EEnemyAIState::Dead)
-	{
-		return;
-	}
-	//Return 중에는 시야 감지를 무시
-	if (CurrentState == EEnemyAIState::Return)
-	{
-		return;
-	}
-	//감지된 대상이 없으면 처리하지않음
-	if (!Actor)
-	{
-		return;
-	}
-
-	//대상이 현재 시야에 들어온 경우
-	if (Stimulus.WasSuccessfullySensed())
-	{
-		//플레이어 또는 동료인지 확인
-		if (Actor->ActorHasTag(TEXT("Player")) || Actor->ActorHasTag(TEXT("PlayerAlly")))
-		{
-			//NavMesh 밖의 대상은 감지하지 않음
-			if (!CanReachTarget(Actor))
-			{
-				return;
-			}
-			//이미 추적이나 공격 중이면 현재 상태 유지
-			if (CurrentState == EEnemyAIState::Chase ||
-				CurrentState == EEnemyAIState::Attack ||
-				CurrentState == EEnemyAIState::Skill)
-			{
-				TargetActor = Actor;
-				return;
-			}
-
-			TargetActor = Actor; //공격 대상으로 지정
-
-			CurrentState = EEnemyAIState::Alert; //대상을 발견하여 Alert 상태로 변경
-
-			StopMovement(); //복귀 중이라면 이동 중지
-
-			AEnemy* Enemy = Cast<AEnemy>(GetPawn()); //현재 AI가 조종하고 있는 Pawn을 Enemy로 가져옴
-
-			if (Enemy && Enemy->AlertMontage)
-			{
-				UAnimInstance* AnimInstnce = Enemy->GetMesh()->GetAnimInstance();
-				if (AnimInstnce)
-				{
-					Enemy->PlayAnimMontage(Enemy->AlertMontage);
-				}
-			}
-		}
-	}
-	else
-	{
-		//현재 공격 대상이 시야에서 사라졌는지 확인
-		if (TargetActor == Actor)
-		{
-			TargetActor = nullptr; //공격 대상 초기화
-
-			//Alert 또는 Chase 중 대상을 놓치면 원래 위치로 복귀
-			if (CurrentState == EEnemyAIState::Alert || 
-				CurrentState == EEnemyAIState::Chase ||
-				CurrentState == EEnemyAIState::Attack)
-			{
-				//Return 상태로 변경
-				CurrentState = EEnemyAIState::Return;
-
-				//Return 애니메이션 재생
-				AEnemy* Enemy = Cast<AEnemy>(GetPawn());
-
-				if (Enemy && Enemy->ReturnMontage)
-				{
-					Enemy->PlayAnimMontage(Enemy->ReturnMontage);
-				}
-
-				//AI가 처음 시작했던 위치로 이동하도록 명령
-				MoveToLocation(StartLocation);
-			}
-		}
-	}
-}
-
 void AEnemyAIController::OnEnemyAlertEnd()
 {
 	//Alert 상태가 아니라면 Chase로 변경하지 않음
@@ -205,44 +105,87 @@ void AEnemyAIController::OnEnemyAlertEnd()
 	{
 		return;
 	}
+	//공격 대상이 존재하는지 확인
+	if (!TargetActor)
+	{
+		return;
+	}
+	//공격 대상이 죽었으면 추적 종료
+	if (!IsTargetAlive())
+	{
+		TargetActor = nullptr;
+		CurrentState = EEnemyAIState::Return;
 
-	//Alert가 끝났으므로 Chase 상태로 변경
-	CurrentState = EEnemyAIState::Chase;
-
-	//Chase 애니메이션 재생
+		//현재 Enemy를 가져옴
+		AEnemy* Enemy = Cast<AEnemy>(GetPawn());
+		if (Enemy && Enemy->ReturnMontage)
+		{
+			Enemy->PlayAnimMontage(Enemy->ReturnMontage);
+		}
+		//시작 위치로 복귀
+		MoveToLocation(StartLocation);
+		return;
+	}
+	//현재 Enemy를 가져옴
 	AEnemy* Enemy = Cast<AEnemy>(GetPawn());
+	if (!Enemy)
+	{
+		return;
+	}
+	//현재 타겟과의 거리계산
+	float DistanceToTarget = FVector::Dist(
+		Enemy->GetActorLocation(),
+		TargetActor->GetActorLocation()
+	);
+	//공격 거리 밖이면 다시 추적
+	CurrentState = EEnemyAIState::Chase;
 	if (Enemy && Enemy->ChaseMontage)
 	{
 		Enemy->PlayAnimMontage(Enemy->ChaseMontage);
 	}
-
-	//공격 대상이 존재하는지 확인
-	if (TargetActor)
-	{
-		//AI가 공격 대상을 향해 이동하도록 명령
-		MoveToActor(
-			TargetActor,
-			-1.0f,
-			true,
-			true,
-			true,
-			nullptr,
-			true
-		);
-	}
+	//공격 대상 추적
+	MoveToActor(
+		TargetActor,
+		-1.0f,
+		true,
+		true,
+		true,
+		nullptr,
+		true
+	);
 }
 
 void AEnemyAIController::OnEnemyAttackEnd()
 {
-	//Attack 상태가 아니면 처리하지않음
+	//Attack 상태가 아니면 처리하지 않음
 	if (CurrentState != EEnemyAIState::Attack)
 	{
 		return;
 	}
 
-	//공격 대상이 없으면 처리하지않음
+	//공격 대상이 없으면 처리하지 않음
 	if (!TargetActor)
 	{
+		return;
+	}
+
+	//현재 타겟 생존 상태 확인
+	const bool bTargetAlive = IsTargetAlive();
+
+	//공격 대상이 죽었으면 추적 종료
+	if (!bTargetAlive)
+	{
+		TargetActor = nullptr;
+		CurrentState = EEnemyAIState::Return;
+
+		//현재 Enemy를 가져옴
+		AEnemy* Enemy = Cast<AEnemy>(GetPawn());
+		if (Enemy && Enemy->ReturnMontage)
+		{
+			Enemy->PlayAnimMontage(Enemy->ReturnMontage);
+		}
+		//시작 위치로 복귀
+		MoveToLocation(StartLocation);
 		return;
 	}
 
@@ -253,7 +196,7 @@ void AEnemyAIController::OnEnemyAttackEnd()
 		return;
 	}
 
-	//플레이어와의 거리 계산
+	//현재 타겟과의 거리 계산
 	float DistanceToTarget = FVector::Dist(
 		Enemy->GetActorLocation(),
 		TargetActor->GetActorLocation()
@@ -271,6 +214,7 @@ void AEnemyAIController::OnEnemyAttackEnd()
 
 	//공격 거리 밖이면 다시 추적
 	CurrentState = EEnemyAIState::Chase;
+
 	if (Enemy->ChaseMontage)
 	{
 		Enemy->PlayAnimMontage(Enemy->ChaseMontage);
@@ -436,6 +380,90 @@ void AEnemyAIController::OnEnemyDamaged(AActor* Attacker)
 	);
 }
 
+void AEnemyAIController::OnTargetDetected(AActor* DetectedActor)
+{
+	//사망 또는 복귀 중이라면 감지하지않음
+	if (CurrentState == EEnemyAIState::Dead ||
+		CurrentState == EEnemyAIState::Return)
+	{
+		return;
+	}
+	//감지된 대상이 없으면 처리하지 않음
+	if (!DetectedActor)
+	{
+		return;
+	}
+	//Player 또는 PlayerAlly만 타겟 가능
+	const bool bIsPlayer = DetectedActor->ActorHasTag(TEXT("Player"));
+	const bool bIsPlayerAlly = DetectedActor->ActorHasTag(TEXT("PlayerAlly"));
+
+	//플레이어 또는 동료만 감지
+	if (!bIsPlayer && !bIsPlayerAlly)
+	{
+		return;
+	}
+	//NavMesh 경로가 없는 대상은 추적하지 않음
+	if (!CanReachTarget(DetectedActor))
+	{
+		return;
+	}
+	//공격 또는 스킬 중에는 타겟 변경 금지
+	if (CurrentState == EEnemyAIState::Attack ||
+		CurrentState == EEnemyAIState::Skill)
+	{
+		return;
+	}
+	//현재 Player를 타겟 중이면 PlayAlly는 무시
+	if (TargetActor &&
+		TargetActor->ActorHasTag(TEXT("Player")) &&
+		bIsPlayerAlly)
+	{
+		return;
+	}
+	//PlayerAlly를 타겟 중 Player를 발견하면 Player로 변경
+	if (TargetActor &&
+		TargetActor->ActorHasTag(TEXT("PlayerAlly")) &&
+		bIsPlayer)
+	{
+		TargetActor = DetectedActor;
+		//추적 중이면 Alert 없이 바로 Player 추적
+		if (CurrentState == EEnemyAIState::Chase)
+		{
+			MoveToActor(
+				TargetActor,
+				-1.0f,
+				true,
+				true,
+				true,
+				nullptr,
+				true
+			);
+		}
+		return;
+	}
+	//이미 추적 중이면 현재 타겟 유지
+	if (CurrentState == EEnemyAIState::Chase)
+	{
+		return;
+	}
+	//Alert 중이면 현재 타겟 유지
+	if (CurrentState == EEnemyAIState::Alert)
+	{
+		return;
+	}
+	//최초 타겟 설정
+	TargetActor = DetectedActor;
+	CurrentState = EEnemyAIState::Alert;
+	StopMovement();
+
+	AEnemy* Enemy = Cast<AEnemy>(GetPawn());
+	if (Enemy && Enemy->AlertMontage)
+	{
+		Enemy->PlayAnimMontage(Enemy->AlertMontage);
+	}
+	
+}
+
 void AEnemyAIController::StartStun()
 {
 	//Chase 상태가 아니면 경직하지 않음
@@ -518,6 +546,8 @@ void AEnemyAIController::OnMoveCompleted(
 				{
 					Enemy->PlayAnimMontage(Enemy->IdleMontage);
 				}
+				//감지 범위 안의 대상 다시 확인
+				Enemy->CheckDetectionTargets();
 			}
 		}
 		return;
@@ -544,7 +574,6 @@ void AEnemyAIController::OnMoveCompleted(
 		{
 			Enemy->PlayAnimMontage(Enemy->ReturnMontage);
 		}
-
 		//Enemy가 처음 배치되었던 위치로 이동하도록 명령
 		MoveToLocation(StartLocation);
 	}

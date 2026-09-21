@@ -1,84 +1,93 @@
-#include "BossEnemyAIController.h"
+ï»¿#include "BossEnemyAIController.h"
 #include "BossEnemy.h"
 
 ABossEnemyAIController::ABossEnemyAIController()
 {
 	bIsUsingSkill = false;
+
+	//ìŠ¤í‚¬ ëŒ€ê¸°ì‹œê°„
+	MinSkillCooldown = 8.0f;
+	MaxSkillCooldown = 12.0f;
+	//ì²« ìŠ¤í‚¬ ëŒ€ê¸°ì‹œê°„ ëœë¤ ì„¤ì •
+	SkillCooldownRemaining = FMath::FRandRange(
+		MinSkillCooldown, MaxSkillCooldown
+	);
 }
 
 void ABossEnemyAIController::UseSkill()
 {
-	//Chase »óÅÂ¿¡¼­¸¸ ½ºÅ³ »ç¿ë
+	//Chase ìƒíƒœì—ì„œë§Œ ìŠ¤í‚¬ ì‚¬ìš©
 	if (CurrentState != EEnemyAIState::Chase)
 	{
 		return;
 	}
-	//°ø°İ ´ë»óÀÌ ¾øÀ¸¸é Ã³¸®ÇÏÁö ¾ÊÀ½
+	//ê³µê²© ëŒ€ìƒì´ ì—†ìœ¼ë©´ ì²˜ë¦¬í•˜ì§€ ì•ŠìŒ
 	if (!TargetActor)
 	{
 		return;
 	}
-	//ÀÌ¹Ì ½ºÅ³ »ç¿ë ÁßÀÌ¸é Ã³¸®ÇÏÁö ¾ÊÀ½
+	//ì´ë¯¸ ìŠ¤í‚¬ ì‚¬ìš© ì¤‘ì´ë©´ ì²˜ë¦¬í•˜ì§€ ì•ŠìŒ
 	if (bIsUsingSkill)
 	{
 		return;
 	}
 
-	//ÇöÀç º¸½º¸¦ °¡Á®¿È
+	//í˜„ì¬ ë³´ìŠ¤ë¥¼ ê°€ì ¸ì˜´
 	ABossEnemy* BossEnemy = Cast<ABossEnemy>(GetPawn());
 	if (!BossEnemy)
 	{
 		return;
 	}
-	//Skill »óÅÂ·Î º¯°æ
+	//Skill ìƒíƒœë¡œ ë³€ê²½
 	CurrentState = EEnemyAIState::Skill;
-	//½ºÅ³ »ç¿ë »óÅÂ·Î º¯°æ
+	//ìŠ¤í‚¬ ì‚¬ìš© ìƒíƒœë¡œ ë³€ê²½
 	bIsUsingSkill = true;
-	//½ºÅ³ »ç¿ë Áß ÀÌµ¿ Á¤Áö
+	//ìŠ¤í‚¬ ì‚¬ìš© ì¤‘ ì´ë™ ì •ì§€
 	StopMovement();
-	//½ºÅ³ ¾Ö´Ï¸ŞÀÌ¼Ç Àç»ı
+	//ìŠ¤í‚¬ ì• ë‹ˆë©”ì´ì…˜ ì¬ìƒ
 	BossEnemy->PlaySkill();
 }
 
 void ABossEnemyAIController::OnBossSkillEnd()
 {
-	//½ºÅ³ »ç¿ë ÁßÀÌ ¾Æ´Ï¶ó¸é Ã³¸®ÇÏÁö ¾ÊÀ½
+	//ìŠ¤í‚¬ ì‚¬ìš© ì¤‘ì´ ì•„ë‹ˆë¼ë©´ ì²˜ë¦¬í•˜ì§€ ì•ŠìŒ
 	if (CurrentState != EEnemyAIState::Skill)
 	{
 		return;
 	}
-	//½ºÅ³ »ç¿ë Á¾·á
+	//ìŠ¤í‚¬ ì‚¬ìš© ì¢…ë£Œ
 	bIsUsingSkill = false;
 
-	//ÇöÀç º¸½º¸¦ °¡Á®¿È
+	//í˜„ì¬ ë³´ìŠ¤ë¥¼ ê°€ì ¸ì˜´
 	ABossEnemy* BossEnemy = Cast<ABossEnemy>(GetPawn());
 	if (!BossEnemy)
 	{
 		return;
 	}
 
-	//°ø°İ ´ë»óÀÌ ¾øÀ¸¸é ½ÃÀÛ À§Ä¡·Î º¹±Í
-	if (!TargetActor)
+	//ê³µê²© ëŒ€ìƒì´ ì—†ê±°ë‚˜ ì£½ìœ¼ë©´ ì‹œì‘ ìœ„ì¹˜ë¡œ ë³µê·€
+	if (!TargetActor || !IsTargetAlive())
 	{
+		TargetActor = nullptr;
 		CurrentState = EEnemyAIState::Return;
 
-		//Return ¾Ö´Ï¸ŞÀÌ¼Ç Àç»ı
+		//Return ì• ë‹ˆë©”ì´ì…˜ ì¬ìƒ
 		if (BossEnemy->ReturnMontage)
 		{
 			BossEnemy->PlayAnimMontage(BossEnemy->ReturnMontage);
 		}
-		//½ÃÀÛ À§Ä¡·Î ÀÌµ¿
+		//ì‹œì‘ ìœ„ì¹˜ë¡œ ì´ë™
 		MoveToLocation(StartLocation);
 		return;
 	}
-	//Chase »óÅÂ·Î º¹±Í
+	//Chase ìƒíƒœë¡œ ë³µê·€
 	CurrentState = EEnemyAIState::Chase;
-	//Chase ¾Ö´Ï¸ŞÀÌ¼Ç Àç»ı
+	//Chase ì• ë‹ˆë©”ì´ì…˜ ì¬ìƒ
 	if (BossEnemy->ChaseMontage)
 	{
 		BossEnemy->PlayAnimMontage(BossEnemy->ChaseMontage);
 	}
-	//´Ù½Ã °ø°İ ´ë»ó ÃßÀû
+	//ë‹¤ì‹œ ê³µê²© ëŒ€ìƒ ì¶”ì 
 	MoveToActor(
 		TargetActor,
 		-1.0f,
@@ -87,6 +96,44 @@ void ABossEnemyAIController::OnBossSkillEnd()
 		true,
 		nullptr,
 		true
+	);
+}
+
+void ABossEnemyAIController::Tick(float DeltaTime)
+{
+	//ê¸°ì¡´ Enemy AI Tick ì‹¤í–‰
+	Super::Tick(DeltaTime);
+
+	//ì‚¬ë§ ìƒíƒœë©´ ìŠ¤í‚¬ ì²˜ë¦¬í•˜ì§€ ì•ŠìŒ
+	if (CurrentState == EEnemyAIState::Dead)
+	{
+		return;
+	}
+	//ìŠ¤í‚¬ ì‚¬ìš© ì¤‘ì´ë©´ ëŒ€ê¸°ì‹œê°„ ê°ì†Œí•˜ì§€ ì•ŠìŒ
+	if (bIsUsingSkill)
+	{
+		return;
+	}
+	//ìŠ¤í‚¬ ëŒ€ê¸°ì‹œê°„ ê°ì†Œ
+	if (SkillCooldownRemaining > 0.0f)
+	{
+		SkillCooldownRemaining -= DeltaTime;
+	}
+	//ì•„ì§ ìŠ¤í‚¬ ëŒ€ê¸°ì‹œê°„ì´ë©´ ì¢…ë£Œ
+	if (SkillCooldownRemaining > 0.0f)
+	{
+		return;
+	}
+	//Chase ìƒíƒœê°€ ë ë•Œê¹Œì§€ ìŠ¤í‚¬ ì‚¬ìš© ëŒ€ê¸°
+	if (CurrentState != EEnemyAIState::Chase)
+	{
+		return;
+	}
+	UseSkill(); //ìŠ¤í‚¬ ì‚¬ìš©
+
+	//ë‹¤ìŒ ìŠ¤í‚¬ ëŒ€ê¸°ì‹œê°„ ëœë¤ ì„¤ì •
+	SkillCooldownRemaining = FMath::FRandRange(
+		MinSkillCooldown, MaxSkillCooldown
 	);
 }
 
