@@ -9,6 +9,7 @@
 #include "StatsComponent.h"
 #include "CombatComponent.h"
 #include "PerkComponent.h"
+#include "HealingComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Zombiemaid69.h"
 #include "LastCureGameMode.h"
@@ -61,6 +62,9 @@ AAPlayerCharacter::AAPlayerCharacter()
 
 	// 레벨업 특전 컴포넌트 생성 및 부착
 	PerkComponent = CreateDefaultSubobject<UPerkComponent>(TEXT("PerkComponent"));
+
+	// 회복 아이템(붕대/주사기) 관리 컴포넌트 생성 및 부착
+	HealingComponent = CreateDefaultSubobject<UHealingComponent>(TEXT("HealingComponent"));
 
 	// 카메라의 기본 시야각을 DefaultFOV로 맞춰서 시작 (에디터에서 카메라에 직접 설정한 값과 어긋나지 않도록 주의)
 	FirstPersonCameraComponent->FieldOfView = DefaultFOV;
@@ -127,6 +131,13 @@ void AAPlayerCharacter::Tick(float DeltaTime)
 				GetCharacterMovement()->MaxWalkSpeed = BaseWalkSpeed;
 			}
 		}
+	}
+
+	// 회복 아이템 사용 중 이동속도 감소 처리
+	// 스프린트, 조준 상태와 무관하게 아이템 사용 중이면 항상 최우선으로 감속 적용
+	if (HealingComponent && HealingComponent->bIsUsingItem)
+	{
+		GetCharacterMovement()->MaxWalkSpeed = BaseWalkSpeed * HealingComponent->UsingWalkSpeedMultiplier;
 	}
 }
 
@@ -200,6 +211,22 @@ void AAPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 			ETriggerEvent::Started, 
 			this, 
 			&AAPlayerCharacter::DoReload
+		);
+
+		// X키를 누르면 DoUseBandage 호출
+		EnhancedInputComponent->BindAction(
+			UseBandageAction,
+			ETriggerEvent::Started,
+			this,
+			&AAPlayerCharacter::DoUseBandage
+		);
+
+		// Z키를 누르면 DoUseSyringe 호출
+		EnhancedInputComponent->BindAction(
+			UseSyringeAction,
+			ETriggerEvent::Started,
+			this,
+			&AAPlayerCharacter::DoUseSyringe
 		);
 
 		// 우클릭을 누르면 DoAimStart 호출, 떼면 DoAimEnd 호출
@@ -360,6 +387,24 @@ void AAPlayerCharacter::DoReload()
 	if (CombatComponent)
 	{
 		CombatComponent->StartReload();
+	}
+}
+
+void AAPlayerCharacter::DoUseBandage()
+{
+	// HealingComponent가 유효하면 붕대 사용 로직 위임
+	if (HealingComponent)
+	{
+		HealingComponent->UseBandage();
+	}
+}
+
+void AAPlayerCharacter::DoUseSyringe()
+{
+	// HealingComponent가 유효하면 주사기 사용 로직 위임
+	if (HealingComponent)
+	{
+		HealingComponent->UseSyringe();
 	}
 }
 

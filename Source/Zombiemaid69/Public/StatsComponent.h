@@ -136,6 +136,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Stats|Health")
 	void HandleDamage(float DamageAmount, AActor* DamageCauser);
 
+	/** 체력을 회복시키는 함수 (아이템 사용, 처치 회복 등에서 호출) */
+	UFUNCTION(BlueprintCallable, Category = "Stats|Health")
+	void HealHealth(float HealAmount);
+
 	/** 현재 체력 비율(0~1)을 반환하는 헬퍼 함수 (체력바 UI에 사용) */
 	UFUNCTION(BlueprintCallable, Category = "Stats|Health")
 	float GetHealthPercent() const { return MaxHealth > 0.0f ? CurrentHealth / MaxHealth : 0.0f; }

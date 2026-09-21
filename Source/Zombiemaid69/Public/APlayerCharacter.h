@@ -63,6 +63,14 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Input")
 	UInputAction* ReloadAction;
 
+	/** 붕대 사용 Input Action (X키) */
+	UPROPERTY(EditAnywhere, Category = "Input")
+	UInputAction* UseBandageAction;
+
+	/** 주사기 사용 Input Action (Z키) */
+	UPROPERTY(EditAnywhere, Category = "Input")
+	UInputAction* UseSyringeAction;
+
 	/** 조준 Input Action(우클릭) */
 	UPROPERTY(EditAnywhere, Category = "Input")
 	UInputAction* AimAction;
@@ -86,6 +94,10 @@ protected:
 	/** 전투(발사/재장전) 컴포넌트 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
 	class UCombatComponent* CombatComponent;
+
+	/** 회복 아이템(붕대/주사기)을 관리하는 컴포넌트 */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
+	class UHealingComponent* HealingComponent;
 
 	/** 레벨업 특전(Perk)을 관리하는 컴포넌트 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
@@ -161,6 +173,14 @@ protected:
 	UFUNCTION(BlueprintCallable, Category = "Combat")
 	virtual void DoReload();
 
+	/** X키를 눌렀을 때 호출 (붕대 사용) */
+	UFUNCTION(BlueprintCallable, Category = "Healing")
+	virtual void DoUseBandage();
+
+	/** Z키를 눌렀을 때 호출 (주사기 사용) */
+	UFUNCTION(BlueprintCallable, Category = "Healing")
+	virtual void DoUseSyringe();
+
 	/** 우클릭을 눌렀을 때 호출(조준 시작) */
 	UFUNCTION(BlueprintCallable, Category = "Combat")
 	virtual void DoAimStart();
@@ -219,6 +239,7 @@ public:
 	UStatsComponent* GetStatsComponent() const { return StatsComponent; }
 	UCombatComponent* GetCombatComponent() const { return CombatComponent; }
 	UPerkComponent* GetPerkComponent() const { return PerkComponent; }
+	UHealingComponent* GetHealingComponent() const { return HealingComponent; }
 
 protected:
 	/** 디버그용 경험치 추가 Input Action */
