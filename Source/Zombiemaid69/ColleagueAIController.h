@@ -16,7 +16,9 @@ enum class EColleagueState : uint8
 	/** 전투 종료 후 아이템을 회수하는 상태  */
 	Recovery UMETA(DisplayName = "Recovery"),
 	/** 플레이어를 따라다니며 대기하는 상태  */
-	Follow UMETA(DisplayName = "Follow")
+	Follow UMETA(DisplayName = "Follow"),
+	/** 전투보다 플레이어 합류를 우선하는 상태  */
+	Recall UMETA(DisplayName = "Recall")
 };
 
 UCLASS()
@@ -34,6 +36,14 @@ public:
 	}
 
 	AColleagueAIController();
+
+	/** 현재 조준 적 상하 조준 각도*/
+	UFUNCTION(BlueprintPure, Category = "Colleague|Combat")
+	float GetTargetAimPitch() const;
+
+	/** 플레이어에게 합류하도록 동료 호출*/
+	UFUNCTION(BlueprintCallable, Category = "Colleague|Recall")
+	void RequestRecall();
 	
 protected:
 	/** 게임 시작 시 상태 검사 타이머 실행 */
@@ -86,6 +96,26 @@ protected:
 	/** 플레이어 일정 거리 따라가는 함수 */
 	void HandleFollowState(APawn* ControlledPawn);
 
+	/** 호출 시 플레이어에게 이동하고 도착 확인 */
+	void HandleRecallState(APawn* ControlledPawn);
+
+	/** 호출 시 플레이어와 도착 거리 판정거리 값 */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Colleague|Recall",
+		meta = (ClampMin = "0.0"))
+	float RecallAcceptanceRadius = 150.0f;
+
+	/** 호출 중 이동 속도 */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Colleague|Recall",
+		meta = (ClampMin = "0.0"))
+	float RecallMoveSpeed = 350.0f;
+
+	/** 도달 불가능한 경우 무한호출 루프 방지 */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Colleague|Recall",
+		meta = (ClampMin = "1.0"))
+	float RecallTimeout = 10.0f;
+
+	float RecallStartTime = -1.0f;
+
 	/** 플레이어랑 유지하는 거리 */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Colleague|Follow")
 	float FollowAcceptanceRadius = 300.0f;
@@ -119,6 +149,15 @@ protected:
 	/** 플레이어가 먼저 피해를 준 경우에만 공격 허용 */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Colleague|Combat")
 	bool bCombatAuthorized = false;
+
+	/** 살아있는 적감지 후 일정시간 미감지시 해제 */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Colleague|Combat")
+	float CombatAuthorizationResetDelay = 3.0f;
+
+	float NoEnemySinceTime = -1.0f;
+
+	bool bResumeFollowBeforeNextShot = false;
+
 
 	/** 몬스터의 체력 변경 알림 수신 */
 	UFUNCTION()
