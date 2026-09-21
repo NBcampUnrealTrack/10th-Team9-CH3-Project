@@ -8,6 +8,8 @@
 #include "Engine/World.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "ColleagueCharacter.h"
+#include "Navigation/PathFollowingComponent.h"
 
 void AColleagueAIController::HandleFollowState(
 	APawn* ControlledPawn
@@ -201,12 +203,37 @@ void AColleagueAIController::EvaluateState()
 		return;
 	}
 
-	CurrentTarget = FindNearestEnemy(
-		ControlledPawn->GetActorLocation()
-	);
+	// 호출 중에는 적 선택과 사격을 하지 않음
+	if (CurrentState == EColleagueState::Recall)
+	{
+		HandleRecallState(ControlledPawn);
+		return;
+	}
+
+	const FVector SearchOrigin = ControlledPawn->GetActorLocation();
+
+	AEnemy* ExistingEnemy = Cast<AEnemy>(CurrentTarget.Get());
+
+	const bool bCanKeepCurrentTarget =
+		IsValid(ExistingEnemy)
+		&& ExistingEnemy->IsAlive()
+		&& ExistingEnemy->ActorHasTag(TEXT("Enemy"))
+		&& EnemyDetectionRadius > 0.0f
+		&& FVector::DistSquared(
+			SearchOrigin,
+			ExistingEnemy->GetActorLocation()
+		) < FMath::Square(EnemyDetectionRadius);
+
+	if (!bCanKeepCurrentTarget)
+	{
+		CurrentTarget = EnemyDetectionRadius > 0.0f
+			? FindNearestEnemy(SearchOrigin)
+			: nullptr;
+	}
 
 	if (IsValid(CurrentTarget))
 	{
+		NoEnemySinceTime = -1.0f;
 		LastCombatEndTime = -1.0f;
 		SetColleagueState(EColleagueState::Combat);
 
@@ -215,6 +242,38 @@ void AColleagueAIController::EvaluateState()
 	}
 
 	const float CurrentTime = World->GetTimeSeconds();
+
+	if (bCombatAuthorized)
+	{
+		if (NoEnemySinceTime < 0.0f)
+		{
+			NoEnemySinceTime = CurrentTime;
+		}
+
+		if (CurrentTime - NoEnemySinceTime
+			>= FMath::Max(CombatAuthorizationResetDelay, 0.0f))
+		{
+			bCombatAuthorized = false;
+			NoEnemySinceTime = -1.0f;
+		}
+	}
+	AColleagueCharacter* Colleague =
+		Cast<AColleagueCharacter>(ControlledPawn);
+
+	if (IsValid(Colleague) && Colleague->IsFiring())
+	{
+		StopMovement();
+
+		UCharacterMovementComponent* Movement =
+			Colleague->GetCharacterMovement();
+
+		if (IsValid(Movement))
+		{
+			Movement->StopMovementImmediately();
+		}
+
+		return;
+	}
 
 	if (CurrentState == EColleagueState::Combat)
 	{
@@ -278,7 +337,8 @@ void AColleagueAIController::SetColleagueState(EColleagueState NewState)
 
 void AColleagueAIController::HandleCombatState(APawn* ControlledPawn)
 {
-	ACharacter* ControlledCharacter = Cast<ACharacter>(ControlledPawn);
+	AColleagueCharacter* ControlledCharacter =
+		Cast<AColleagueCharacter>(ControlledPawn);
 
 	if (!IsValid(ControlledCharacter) || !IsValid(CurrentTarget))
 	{
@@ -309,6 +369,26 @@ void AColleagueAIController::HandleCombatState(APawn* ControlledPawn)
 	if (!IsValid(PlayerPawn) || PlayerPawn == ControlledPawn)
 	{
 		StopMovement();
+		return;
+	}
+
+	// 사격 모션 중에 추적 이동을 다시 하지않음
+	if (ControlledCharacter->IsFiring())
+	{
+		StopMovement();
+		Movement->StopMovementImmediately();
+		return;
+	}
+
+	// 사격이 끝나면 한번만 아래 추적이동 진행
+	if (bResumeFollowBeforeNextShot)
+	{
+		bResumeFollowBeforeNextShot = false;
+	}
+	else if (bCombatAuthorized
+		&& ControlledCharacter->TryFireAtTarget(CurrentTarget.Get()))
+	{
+		bResumeFollowBeforeNextShot = true;
 		return;
 	}
 
@@ -371,6 +451,7 @@ void AColleagueAIController::HandleEnemyHealthChanged(
 	if (!bCombatAuthorized)
 	{
 		bCombatAuthorized = true;
+		NoEnemySinceTime = -1.0f;
 
 		UE_LOG(
 			LogTemp,
@@ -428,7 +509,7 @@ void AColleagueAIController::EndPlay(
 			);
 		}
 	}
-	
+
 	ActorSpawnedHandle.Reset();
 
 	for (const TWeakObjectPtr<AEnemy>& Entry : ObservedEnemies)
@@ -448,4 +529,180 @@ void AColleagueAIController::EndPlay(
 	bCombatAuthorized = false;
 
 	Super::EndPlay(EndPlayReason);
+}
+
+float AColleagueAIController::GetTargetAimPitch() const
+{
+	const APawn* ControlledPawn = GetPawn();
+	const AEnemy* TargetEnemy = Cast<AEnemy>(CurrentTarget.Get());
+
+	if (CurrentState != EColleagueState::Combat
+		|| !IsValid(ControlledPawn)
+		|| !IsValid(TargetEnemy)
+		|| !TargetEnemy->IsAlive())
+	{
+		return 0.0f;
+	}
+
+	const FVector AimOrigin = ControlledPawn->GetPawnViewLocation();
+	const FVector AimTarget = TargetEnemy->GetActorLocation();
+	const FVector AimDirection = AimTarget - AimOrigin;
+
+	if (AimDirection.IsNearlyZero())
+	{
+		return 0.0f;
+	}
+
+	const float TargetPitch = FMath::RadiansToDegrees(
+		FMath::Atan2(
+			AimDirection.Z,
+			AimDirection.Size2D()
+		)
+	);
+
+	return FMath::Clamp(
+		TargetPitch,
+		-45.0f,
+		45.0f
+	);
+}
+
+void AColleagueAIController::RequestRecall()
+{
+	UWorld* World = GetWorld();
+	AColleagueCharacter* Colleague =
+		Cast<AColleagueCharacter>(GetPawn());
+	APawn* PlayerPawn = UGameplayStatics::GetPlayerPawn(
+		this,
+		0
+	);
+
+	if (!HasAuthority()
+		|| !IsValid(World)
+		|| !IsValid(Colleague)
+		|| !IsValid(PlayerPawn)
+		|| PlayerPawn == Colleague)
+	{
+		return;
+	}
+
+	RecallStartTime = World->GetTimeSeconds();
+	CurrentTarget = nullptr;
+	LastCombatEndTime = -1.0f;
+	bResumeFollowBeforeNextShot = false;
+	bIsRunningToPlayer = false;
+
+	StopMovement();
+	ClearFocus(EAIFocusPriority::Gameplay);
+	SetColleagueState(EColleagueState::Recall);
+
+	HandleRecallState(Colleague);
+}
+
+void AColleagueAIController::HandleRecallState(APawn* ControlledPawn)
+{
+	UWorld* World = GetWorld();
+
+	AColleagueCharacter* Colleague =
+		Cast<AColleagueCharacter>(ControlledPawn);
+
+	APawn* PlayerPawn = UGameplayStatics::GetPlayerPawn(
+		this,
+		0
+	);
+
+	if (!IsValid(World)
+		|| !IsValid(Colleague)
+		|| !IsValid(PlayerPawn)
+		|| PlayerPawn == Colleague)
+	{
+		RecallStartTime = -1.0f;
+		StopMovement();
+		SetColleagueState(EColleagueState::Follow);
+		return;
+	}
+
+	UCharacterMovementComponent* Movement =
+		Colleague->GetCharacterMovement();
+
+	if (!IsValid(Movement))
+	{
+		RecallStartTime = -1.0f;
+		StopMovement();
+		SetColleagueState(EColleagueState::Follow);
+		return;
+	}
+	const float CurrentTime = World->GetTimeSeconds();
+
+	// 호출 중에도 적 미감지 3초 후 공격 허용 규칙 유지
+	const bool bHasNearbyEnemy =
+		EnemyDetectionRadius > 0.0f
+		&& IsValid(FindNearestEnemy(Colleague->GetActorLocation()));
+
+	if (bHasNearbyEnemy)
+	{
+		NoEnemySinceTime = -1.0f;
+	}
+	else if (bCombatAuthorized)
+	{
+		if (NoEnemySinceTime < 0.0f)
+		{
+			NoEnemySinceTime = CurrentTime;
+		}
+
+		if (CurrentTime - NoEnemySinceTime
+			>= FMath::Max(CombatAuthorizationResetDelay, 0.0f))
+		{
+			bCombatAuthorized = false;
+			NoEnemySinceTime = -1.0f;
+		}
+	}
+
+	//도착 실패 시간 초과시 공통 종료 처리
+	const auto FinishRecall = [this, Movement]()
+		{
+			RecallStartTime = -1.0f;
+			StopMovement();
+			Movement->StopMovementImmediately();
+			Movement->MaxWalkSpeed = FollowWalkSpeed;
+			SetColleagueState(EColleagueState::Follow);
+		};
+
+	if (RecallStartTime < 0.0f
+		||CurrentTime - RecallStartTime
+		>= FMath::Max(RecallTimeout, 1.0f))
+	{
+		FinishRecall();
+		return;
+	}
+
+	// 이미 시작한 사격 모션은 끝내고, 추가사격은 하지않음
+	if (Colleague->IsFiring())
+	{
+		StopMovement();
+		Movement->StopMovementImmediately();
+		return;
+	}
+	// 적 대신 이동 방향을 보며 플레이어에게 이동
+	Colleague->bUseControllerRotationYaw = false;
+	Movement->bUseControllerDesiredRotation = false;
+	Movement->bOrientRotationToMovement = true;
+	Movement->MaxWalkSpeed = FMath::Max(
+		RecallMoveSpeed,
+		0.0f
+	);
+
+	const EPathFollowingRequestResult::Type MoveResult = MoveToActor(
+		PlayerPawn,
+		FMath::Max(RecallAcceptanceRadius, 0.0f),
+		true,
+		true,
+		false
+	);
+
+	if (MoveResult == EPathFollowingRequestResult::AlreadyAtGoal
+		|| MoveResult == EPathFollowingRequestResult::Failed)
+	{
+		FinishRecall();
+	}
 }
