@@ -46,7 +46,7 @@ public:
 
 	/** 이 무기의 예비 탄약 수 (무기 종류별로 탄약을 따로 관리하고 싶을 때 사용) */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon|State")
-	int32 ReserveAmmo = 90;
+	int32 ReserveAmmo;
 
 protected:
 	virtual void BeginPlay() override;

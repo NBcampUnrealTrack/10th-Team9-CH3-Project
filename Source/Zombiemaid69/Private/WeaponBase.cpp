@@ -3,7 +3,7 @@
 
 AWeaponBase::AWeaponBase()
 {
-	// 무기 자체는 매 프레임 갱신할 로직이 없으므로 Tick 비활성화
+	// 무기 자체는 매 프레임 갱신할 로직이 없음
 	PrimaryActorTick.bCanEverTick = false;
 
 	// 무기 메시 생성 (루트 컴포넌트로 설정)
@@ -20,4 +20,7 @@ void AWeaponBase::BeginPlay()
 
 	// 무기가 스폰될 때 탄창을 가득 채운 상태로 시작
 	CurrentAmmoInClip = MaxAmmoInClip;
+
+	// 예비 탄약을 탄창 크기의 4배로 자동 설정
+	ReserveAmmo = MaxAmmoInClip * 3;
 }
