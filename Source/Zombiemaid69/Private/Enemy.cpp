@@ -1,5 +1,7 @@
 ﻿#include "Enemy.h"
 #include "EnemyAIController.h"
+#include "DamageNumberActor.h"
+#include "Serum.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Components/SphereComponent.h"
@@ -132,18 +134,18 @@ float AEnemy::TakeDamage(
 	const float PreviousHealth = CurrentHealth;
 
 	// 체력이 음수가 되지않게 제한
-
 	CurrentHealth = FMath::Max(
 		PreviousHealth - ActualDamage,
 		0.0f
 	);
 
 	const float HealthLost = PreviousHealth - CurrentHealth;
-
 	if (HealthLost <= 0.0f)
 	{
 		return 0.0f;
 	}
+	//실제로 받은 데미지 표시
+	ShowDamageNumber(HealthLost);
 
 	// 치명타도 알림 보내고 사망처리
 	OnHealthChanged.Broadcast(
@@ -181,6 +183,7 @@ float AEnemy::TakeDamage(
 
 	return HealthLost;
 }
+
 void AEnemy::CheckDetectionTargets()
 {
 	//감지 Sphere가 없으면 처리하지않음
@@ -208,6 +211,41 @@ void AEnemy::CheckDetectionTargets()
 		//기존 감지 로직으로 전달
 		AIController->OnTargetDetected(OverlappingActor);
 	}
+}
+
+void AEnemy::ShowDamageNumber(float Damage)
+{
+	//데미지 숫자 Actor가 없으면 생성하지않음
+	if (!DamageNumberClass)
+	{
+		return;
+	}
+	//좀비 위쪽에 생성
+	const FVector SpawnLocation =
+		GetActorLocation() + FVector(0.0f, 0.0f, 150.0f);
+	const FTransform SpawnTransform(
+		GetActorRotation(), SpawnLocation
+	);
+	//데미지 숫자 Actor 생성
+	ADamageNumberActor* DamageNumberActor =
+		GetWorld()->SpawnActorDeferred<ADamageNumberActor>(
+			DamageNumberClass, 
+			SpawnTransform,
+			this,
+			nullptr,
+			ESpawnActorCollisionHandlingMethod::AlwaysSpawn
+	);
+	if (!DamageNumberActor)
+	{
+		return;
+	}
+	//실제로 받은 데미지를 전달
+	DamageNumberActor->SetDamage(Damage);
+	//데미지 숫자 Actor 생성 완료
+	UGameplayStatics::FinishSpawningActor(
+		DamageNumberActor,
+		SpawnTransform
+	);
 }
 
 float AEnemy::GetAttackRange() const
@@ -250,7 +288,6 @@ void AEnemy::Die()
 	{
 		return;
 	}
-
 	bIsDead = true; // 적을 사망 상태로 변경
 	CurrentHealth = 0.0f;
 
@@ -258,24 +295,27 @@ void AEnemy::Die()
 	ALastCureGameMode* GM = Cast<ALastCureGameMode>(
 		UGameplayStatics::GetGameMode(this)
 	);
-
 	if (GM)
 	{
 		//현재 좀비가 죽었다고 게임모드에 알림
 		GM->HandleZombieDeath(this);
 	}
-
-	//현재 게임인스턴스를 가져옴
-	ULastCureGameInstance* GI = Cast<ULastCureGameInstance>(
-		UGameplayStatics::GetGameInstance(this)
-	);
-
-	if (GI)
+	//혈청 드랍
+	if (SerumClass)
 	{
-		//해당 좀비에게 설정된 일반혈청 지급
-		GI->AddSerum(SerumReward);
+		ASerum* DroppedSerum =
+			GetWorld()->SpawnActor<ASerum>(
+				SerumClass,
+				GetActorLocation(),
+				FRotator::ZeroRotator
+			);
+
+		if (DroppedSerum)
+		{
+			//좀비의 혈청 보상량 전달
+			DroppedSerum->SetSerumAmount(SerumReward);
+		}
 	}
-	
 	//현재 AIController 가져오기
 	AEnemyAIController* AIController = Cast<AEnemyAIController>(GetController());
 

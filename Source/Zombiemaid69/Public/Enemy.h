@@ -1,12 +1,18 @@
 ﻿#pragma once
 
 #include "CoreMinimal.h"
+
 #include "GameFramework/Character.h"
 #include "Enemy.generated.h"
+
+
 
 // 윤민 추가작성 - Colleague와 Enemy를 호환하기위한 코드 작성부(시작지점)
 class AEnemy;
 class AController;
+
+class AActor;
+class ASerum;
 
 class USphereComponent;
 class UPrimitiveComponent;
@@ -66,6 +72,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "AI|Detection")
 	void CheckDetectionTargets();
 
+	//피격 데미지 표시
+	UFUNCTION(BlueprintCallable, Category = "Enemy|Damage")
+	void ShowDamageNumber(float Damage);
+
 	//받는 데미지
 	virtual float TakeDamage(
 		float DamageAmount,//이번에 받은 데미지양
@@ -117,6 +127,10 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy|Reward")
 	int32 ExpReward; //경험치 보상
 
+	//드랍할 혈청 클래스
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Enemy|Reward")
+	TSubclassOf<ASerum> SerumClass;
+
 	//스테이트
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Enemy|State")
 	bool bIsDead; //죽었는가?
@@ -127,6 +141,10 @@ protected:
 	//플레이어 최초 감지 거리
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI|Detection")
 	float DetectionRange;
+
+	//피격 데미지 숫자 Actor
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy|Damage")
+	TSubclassOf<AActor> DamageNumberClass;
 
 	virtual void BeginPlay() override;
 
@@ -139,4 +157,6 @@ protected:
 		bool bFromSweep,
 		const FHitResult& SweepResult
 	);
+
+
 };
