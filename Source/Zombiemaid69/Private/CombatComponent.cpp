@@ -1,4 +1,5 @@
 ﻿#include "CombatComponent.h"
+#include "APlayerCharacter.h"
 #include "PerkComponent.h"
 #include "WeaponBase.h"
 #include "Kismet/GameplayStatics.h"
@@ -59,14 +60,17 @@ void UCombatComponent::SwitchWeapon(int32 SlotIndex)
 	if (EquippedWeapon)
 	{
 		// 무기를 캐릭터의 1인칭 팔 메시 손 소켓에 부착
-		ACharacter* OwnerCharacter = Cast<ACharacter>(OwnerActor);
+		AAPlayerCharacter* OwnerCharacter = Cast<AAPlayerCharacter>(OwnerActor);
+
 		if (OwnerCharacter)
 		{
-			USkeletalMeshComponent* CharacterMesh = OwnerCharacter->FindComponentByClass<USkeletalMeshComponent>();
-			if (CharacterMesh)
+			USkeletalMeshComponent* FirstPersonMesh = 
+				OwnerCharacter->GetFirstPersonMesh();
+
+			if (FirstPersonMesh)
 			{
 				EquippedWeapon->AttachToComponent(
-					CharacterMesh,
+					FirstPersonMesh,
 					FAttachmentTransformRules::SnapToTargetNotIncludingScale,
 					WeaponSocketName
 				);
