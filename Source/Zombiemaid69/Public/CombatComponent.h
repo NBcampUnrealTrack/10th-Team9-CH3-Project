@@ -91,6 +91,7 @@ private:
 	TArray<AWeaponBase*> WeaponInstances;
 
 	/** 현재 장착 중인 무기의 슬롯 번호 (같은 슬롯을 다시 누르면 아무 동작도 하지 않도록 체크용) */
+	UPROPERTY(BlueprintReadOnly, Category = "Combat|Weapon", meta = (AllowPrivateAccess = "true"))
 	int32 CurrentWeaponSlotIndex = -1;
 
 	/** 재장전 완료 시점에 호출될 타이머 핸들 */
