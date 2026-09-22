@@ -382,86 +382,54 @@ void AEnemyAIController::OnEnemyDamaged(AActor* Attacker)
 
 void AEnemyAIController::OnTargetDetected(AActor* DetectedActor)
 {
-	//사망 또는 복귀 중이라면 감지하지않음
+	//사망 또는 복귀 중이라면 감지하지 않음
 	if (CurrentState == EEnemyAIState::Dead ||
 		CurrentState == EEnemyAIState::Return)
 	{
 		return;
 	}
+
 	//감지된 대상이 없으면 처리하지 않음
 	if (!DetectedActor)
 	{
 		return;
 	}
-	//Player 또는 PlayerAlly만 타겟 가능
+
+	//Player 또는 PlayerAlly인지 확인
 	const bool bIsPlayer = DetectedActor->ActorHasTag(TEXT("Player"));
 	const bool bIsPlayerAlly = DetectedActor->ActorHasTag(TEXT("PlayerAlly"));
 
-	//플레이어 또는 동료만 감지
+	//Player 또는 PlayerAlly가 아니면 무시
 	if (!bIsPlayer && !bIsPlayerAlly)
 	{
 		return;
 	}
+
+	//이미 공격 대상이 있으면 먼저 감지한 대상 유지
+	if (TargetActor)
+	{
+		return;
+	}
+
 	//NavMesh 경로가 없는 대상은 추적하지 않음
 	if (!CanReachTarget(DetectedActor))
 	{
 		return;
 	}
-	//공격 또는 스킬 중에는 타겟 변경 금지
-	if (CurrentState == EEnemyAIState::Attack ||
-		CurrentState == EEnemyAIState::Skill)
-	{
-		return;
-	}
-	//현재 Player를 타겟 중이면 PlayAlly는 무시
-	if (TargetActor &&
-		TargetActor->ActorHasTag(TEXT("Player")) &&
-		bIsPlayerAlly)
-	{
-		return;
-	}
-	//PlayerAlly를 타겟 중 Player를 발견하면 Player로 변경
-	if (TargetActor &&
-		TargetActor->ActorHasTag(TEXT("PlayerAlly")) &&
-		bIsPlayer)
-	{
-		TargetActor = DetectedActor;
-		//추적 중이면 Alert 없이 바로 Player 추적
-		if (CurrentState == EEnemyAIState::Chase)
-		{
-			MoveToActor(
-				TargetActor,
-				-1.0f,
-				true,
-				true,
-				true,
-				nullptr,
-				true
-			);
-		}
-		return;
-	}
-	//이미 추적 중이면 현재 타겟 유지
-	if (CurrentState == EEnemyAIState::Chase)
-	{
-		return;
-	}
-	//Alert 중이면 현재 타겟 유지
-	if (CurrentState == EEnemyAIState::Alert)
-	{
-		return;
-	}
-	//최초 타겟 설정
+
+	//먼저 감지된 대상을 공격 대상으로 지정
 	TargetActor = DetectedActor;
+
+	//Alert 상태로 변경
 	CurrentState = EEnemyAIState::Alert;
 	StopMovement();
 
+	//Alert 애니메이션 재생
 	AEnemy* Enemy = Cast<AEnemy>(GetPawn());
 	if (Enemy && Enemy->AlertMontage)
 	{
 		Enemy->PlayAnimMontage(Enemy->AlertMontage);
 	}
-	
 }
 
 void AEnemyAIController::StartStun()
