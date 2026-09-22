@@ -75,6 +75,13 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Input")
 	UInputAction* AimAction;
 
+	/** 동료 호출 입력 액션 (윤민) */
+	UPROPERTY(EditAnywhere, Category = "Input")
+	UInputAction* RecallColleagueAction = nullptr;
+
+	/** 동료에게 플레이어 합류 요청 */
+	void DoRecallColleague();
+
 	/** 1번 슬롯(권총) 교체 Input Action */
 	UPROPERTY(EditAnywhere, Category = "Input")
 	UInputAction* Weapon1Action;
@@ -105,11 +112,11 @@ protected:
 
 	/** 기본 걷기 속도 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
-	float BaseWalkSpeed = 300.0f;
+	float BaseWalkSpeed = 400.0f;
 
 	/** 달리기 시 곱해줄 배율 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
-	float SprintSpeedMultiplier = 1.5f;
+	float SprintSpeedMultiplier = 1.8f;
 
 	/** 현재 스프린트를 하고 싶어하는 상태인지 (실제 속도 적용은 Tick에서 스태미나 체크 후 결정) */
 	bool bWantsToSprint = false;
