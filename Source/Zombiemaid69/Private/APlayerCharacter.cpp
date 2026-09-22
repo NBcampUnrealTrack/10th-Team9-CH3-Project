@@ -20,22 +20,29 @@ AAPlayerCharacter::AAPlayerCharacter()
 	// 콜리전 캡슐 크기 설정
 	GetCapsuleComponent()->InitCapsuleSize(55.f, 96.0f);
 
-	// 캐릭터의 소유자(본인)에게만 보이는 1인칭 메시 생성
+	// 1인칭 카메라 생성
+	FirstPersonCameraComponent =
+		CreateDefaultSubobject<UCameraComponent>(TEXT("First Person Camera"));
+
+	FirstPersonCameraComponent->SetupAttachment(GetCapsuleComponent());
+
+	// 캡슐 중심에서 눈높이까지 올림
+	FirstPersonCameraComponent->SetRelativeLocation(FVector(0.0f, 0.0f, 64.0f));
+
+	FirstPersonCameraComponent->SetRelativeRotation(FRotator::ZeroRotator);
+
+	// 마우스 상하좌우 회전을 카메라에 적용
+	FirstPersonCameraComponent->bUsePawnControlRotation = true;
+
+	// 본인에게만 보이는 1인칭 메시 생성
 	FirstPersonMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("First Person Mesh"));
 
-	FirstPersonMesh->SetupAttachment(GetMesh());
+	// 손 메시가 카메라를 따라가게 설정
+	FirstPersonMesh->SetupAttachment(FirstPersonCameraComponent);
 	FirstPersonMesh->SetOnlyOwnerSee(true);
+	FirstPersonMesh->SetCastShadow(false);
 	FirstPersonMesh->FirstPersonPrimitiveType = EFirstPersonPrimitiveType::FirstPerson;
 	FirstPersonMesh->SetCollisionProfileName(FName("NoCollision"));
-
-	// 카메라 컴포넌트 생성
-	FirstPersonCameraComponent = CreateDefaultSubobject<UCameraComponent>(TEXT("First Person Camera"));
-	FirstPersonCameraComponent->SetupAttachment(FirstPersonMesh, FName("head"));
-	FirstPersonCameraComponent->SetRelativeLocationAndRotation(
-		FVector(-2.8f, 5.89f, 0.0f),
-		FRotator(0.0f, 90.0f, -90.0f)
-	);
-	FirstPersonCameraComponent->bUsePawnControlRotation = true;
 	FirstPersonCameraComponent->bEnableFirstPersonFieldOfView = true;
 	FirstPersonCameraComponent->bEnableFirstPersonScale = true;
 	FirstPersonCameraComponent->FirstPersonFieldOfView = 70.0f;
