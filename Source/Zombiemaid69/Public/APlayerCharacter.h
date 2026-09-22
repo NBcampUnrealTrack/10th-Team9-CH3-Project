@@ -75,6 +75,13 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Input")
 	UInputAction* AimAction;
 
+	/** 동료 호출 입력 액션 (윤민) */
+	UPROPERTY(EditAnywhere, Category = "Input")
+	UInputAction* RecallColleagueAction = nullptr;
+
+	/** 동료에게 플레이어 합류 요청 */
+	void DoRecallColleague();
+
 	/** 1번 슬롯(권총) 교체 Input Action */
 	UPROPERTY(EditAnywhere, Category = "Input")
 	UInputAction* Weapon1Action;
