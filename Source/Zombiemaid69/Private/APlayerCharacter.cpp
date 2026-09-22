@@ -13,6 +13,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "Zombiemaid69.h"
 #include "LastCureGameMode.h"
+#include "ColleagueAIController.h"
 
 
 AAPlayerCharacter::AAPlayerCharacter()
@@ -275,6 +276,17 @@ void AAPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 			this,
 			&AAPlayerCharacter::DoSwitchWeapon4
 		);
+
+		// 동료 호출 입력을 누를 때 실행(윤민)
+		if (RecallColleagueAction)
+		{
+			EnhancedInputComponent->BindAction(
+				RecallColleagueAction,
+				ETriggerEvent::Started,
+				this,
+				&AAPlayerCharacter::DoRecallColleague
+			);
+		}
 
 		// 디버그: 경험치 추가 (테스트용)
 		EnhancedInputComponent->BindAction(
@@ -541,5 +553,33 @@ void AAPlayerCharacter::DebugAddExperience()
 	else
 	{
 		UE_LOG(LogTemp, Error, TEXT("StatsComponent가 nullptr입니다!"));
+	}
+}
+// 동료 호출 입력 처리 함수 (윤민)
+void AAPlayerCharacter::DoRecallColleague()
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	TArray<AActor*> ColleagueControllers;
+
+	UGameplayStatics::GetAllActorsOfClass(
+		this,
+		AColleagueAIController::StaticClass(),
+		ColleagueControllers
+	);
+
+	for (AActor* Actor : ColleagueControllers)
+	{
+		AColleagueAIController* ColleagueController =
+			Cast<AColleagueAIController>(Actor);
+
+		if (IsValid(ColleagueController)
+			&& IsValid(ColleagueController->GetPawn()))
+		{
+			ColleagueController->RequestRecall();
+		}
 	}
 }

@@ -5,6 +5,7 @@
 #include "ColleagueCharacter.generated.h"
 
 class UAnimMontage;
+class USceneComponent;
 
 UCLASS()
 class ZOMBIEMAID69_API AColleagueCharacter : public ACharacter
@@ -26,8 +27,27 @@ public:
 
 	bool TryFireAtTarget(AActor* Target);
 
+	/** 맵에 배치된 동료 총 소지 여부 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Colleague|Equipment")
+	bool bWeaponEquipped = true;
+
+	/** 권총 소지 여부 반환값 */
+	UFUNCTION(BlueprintPure, Category = "Colleague|Equipment")
+	bool IsWeaponEquipped() const
+	{
+		return bWeaponEquipped;
+	}
+
 protected:
 	virtual void BeginPlay() override;
+
+	/** 동료 발사 성공 시 총구 및 명중 효과 */
+	UFUNCTION(BlueprintImplementableEvent, BlueprintCosmetic, Category = "Colleague|Effects")
+	void PlayShotEffects(
+		USceneComponent* MuzzleComponent,
+		FVector ImpactPoint,
+		FVector ImpactNormal
+	);
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Colleague|Stats")
 	float MaxHealth = 150.0f;
