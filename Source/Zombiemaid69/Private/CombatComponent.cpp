@@ -222,7 +222,12 @@ void UCombatComponent::PerformHitTrace()
 	if (bHit && HitResult.GetActor())
 	{
 		// 무엇을 맞췄는지 로그로 확인
-		UE_LOG(LogTemp, Warning, TEXT("트레이스 히트: %s"), *HitResult.GetActor()->GetName());
+		UE_LOG(
+			LogTemp,
+			Warning,
+			TEXT("트레이스 히트: %s"),
+			*HitResult.GetActor()->GetName()
+		);
 
 		// 언리얼 표준 데미지 함수를 호출
 		// 이 함수가 내부적으로 대상 액터의 TakeDamage()를 자동으로 호출해줌
