@@ -9,6 +9,12 @@ class AWeaponBase;
 /** 탄약 상태가 바뀔 때 UI(탄약 표시)에서 구독할 델리게이트 */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnAmmoChanged, int32, CurrentAmmo, int32, ReserveAmmo);
 
+//발사 성공 델리게이트
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnFireSucceeded);
+
+//장전 시작 델리게이트
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnReloadStarted);
+
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
 class ZOMBIEMAID69_API UCombatComponent : public UActorComponent
 {
@@ -40,6 +46,14 @@ public:
 	/** 탄약 수가 바뀔 때마다 UI에 알림 */
 	UPROPERTY(BlueprintAssignable, Category = "Combat|Events")
 	FOnAmmoChanged OnAmmoChanged;
+
+	/** 실제 발사에 성공했을 때 호출 */
+	UPROPERTY(BlueprintAssignable, Category = "Combat|Events")
+	FOnFireSucceeded OnFireSucceeded;
+
+	/** 실제 재장전이 시작됐을 때 호출 */
+	UPROPERTY(BlueprintAssignable, Category = "Combat|Events")
+	FOnReloadStarted OnReloadStarted;
 
 	/** 발사 시도 (좌클릭을 누른 순간 캐릭터에서 호출) */
 	UFUNCTION(BlueprintCallable, Category = "Combat")

@@ -175,6 +175,12 @@ void UCombatComponent::Fire()
 	// 탄창에서 탄약 1발 소모
 	EquippedWeapon->CurrentAmmoInClip--;
 
+	OnAmmoChanged.Broadcast(
+		EquippedWeapon->CurrentAmmoInClip,
+		EquippedWeapon->ReserveAmmo
+	);
+	OnFireSucceeded.Broadcast();
+
 	// 탄약 변경 사항을 UI에 알림
 	OnAmmoChanged.Broadcast(
 		EquippedWeapon->CurrentAmmoInClip,
@@ -330,6 +336,9 @@ void UCombatComponent::StartReload()
 
 	// 재장전 상태로 전환
 	bIsReloading = true;
+
+	// 실제 재장전이 시작됐음을 블루프린트에 알림
+	OnReloadStarted.Broadcast();
 
 	// TODO: 재장전(Reload) 사운드 재생 코드 추가 예정
 
