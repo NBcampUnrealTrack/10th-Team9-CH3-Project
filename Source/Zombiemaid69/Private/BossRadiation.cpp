@@ -31,10 +31,8 @@ void ABossRadiation::OnSkillHit()
 	SkillElapsedTime = 0.0f;
 
 	//1초 후부터 방사능 피해 시작
-	FTimerHandle RadiationTimer;
-
 	GetWorldTimerManager().SetTimer(
-		RadiationTimer,
+		RadiationDamageTimer,
 		this,
 		&ABossRadiation::ApplyRadiationDamage,
 		SkillDamageInterval,
