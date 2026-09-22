@@ -5,6 +5,7 @@
 #include "GameFramework/Character.h"
 #include "Camera/CameraComponent.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "DrawDebugHelpers.h"
 
 UCombatComponent::UCombatComponent()
 {
@@ -58,6 +59,9 @@ void UCombatComponent::SwitchWeapon(int32 SlotIndex)
 
 	if (EquippedWeapon)
 	{
+		// 현재 선택된 슬롯 번호 저장
+		CurrentWeaponSlotIndex = SlotIndex;
+
 		// 무기를 캐릭터의 1인칭 팔 메시 손 소켓에 부착
 		ACharacter* OwnerCharacter = Cast<ACharacter>(OwnerActor);
 		if (OwnerCharacter)
@@ -89,22 +93,27 @@ void UCombatComponent::SwitchWeapon(int32 SlotIndex)
 
 void UCombatComponent::Fire()
 {
+	// 함수 진입 확인용 로그
+	UE_LOG(LogTemp, Warning, TEXT("Fire() 호출됨"));
+
 	// 장착된 무기가 없으면 발사 불가
 	if (!EquippedWeapon)
 	{
+		UE_LOG(LogTemp, Error, TEXT("Fire() 실패: EquippedWeapon이 nullptr입니다"));
 		return;
 	}
 
 	// 재장전 중이면 발사 불가
 	if (bIsReloading)
 	{
+		UE_LOG(LogTemp, Warning, TEXT("Fire() 실패: 재장전 중입니다"));
 		return;
 	}
 
 	// 총알이 없으면 발사되지 않도록 함
 	if (!HasAmmo())
 	{
-		// 탄약이 없다는 사운드(마른 격발음)를 재생할 자리
+		UE_LOG(LogTemp, Warning, TEXT("Fire() 실패: 탄약이 없습니다 (CurrentAmmoInClip: %d)"), EquippedWeapon->CurrentAmmoInClip);
 		// TODO: 총알 없음(Dry Fire) 사운드 재생 코드 추가 예정
 		return;
 	}
@@ -115,6 +124,7 @@ void UCombatComponent::Fire()
 	// 마지막 발사 시점으로부터 발사 간격(FireRate)이 지나지 않았다면 발사 거부 (연사속도 제한)
 	if (CurrentTime - LastFireTime < EquippedWeapon->FireRate)
 	{
+		UE_LOG(LogTemp, Warning, TEXT("Fire() 실패: 발사 간격(FireRate) 미충족"));
 		return;
 	}
 
@@ -130,7 +140,9 @@ void UCombatComponent::Fire()
 	// 탄약 변경 사항을 UI에 알림
 	OnAmmoChanged.Broadcast(EquippedWeapon->CurrentAmmoInClip, EquippedWeapon->ReserveAmmo);
 
-	// 총 발사 사운드를 재생할 자리
+	// 실제로 발사가 완료됐다는 로그
+	UE_LOG(LogTemp, Warning, TEXT("발사 성공! 남은 탄약: %d / %d"), EquippedWeapon->CurrentAmmoInClip, EquippedWeapon->ReserveAmmo);
+
 	// TODO: 총기 발사(Fire) 사운드 재생 코드 추가 예정
 }
 
@@ -193,9 +205,30 @@ void UCombatComponent::PerformHitTrace()
 		QueryParams
 	);
 
+		// 디버그용: 트레이스 라인을 화면에 시각적으로 표시(2초간 유지)
+		// 빨간색이면 맞은 지점까지, 초록색이면 아무것도 안 맞고 사거리 끝까지 그려짐
+		DrawDebugLine(
+			GetWorld(),
+			StartLocation,
+			bHit ? HitResult.Location : EndLocation,
+			bHit ? FColor::Red : FColor::Green,
+			false,
+			2.0f,
+			0,
+			1.0f
+		);
+
 	// 무언가에 맞았고, 맞은 대상이 유효한 액터라면
 	if (bHit && HitResult.GetActor())
 	{
+		// 무엇을 맞췄는지 로그로 확인
+		UE_LOG(
+			LogTemp,
+			Warning,
+			TEXT("트레이스 히트: %s"),
+			*HitResult.GetActor()->GetName()
+		);
+
 		// 언리얼 표준 데미지 함수를 호출
 		// 이 함수가 내부적으로 대상 액터의 TakeDamage()를 자동으로 호출해줌
 		UGameplayStatics::ApplyPointDamage(
@@ -211,6 +244,13 @@ void UCombatComponent::PerformHitTrace()
 		// 피격 이펙트(피격 마크, 파티클 등)를 재생할 자리
 		// TODO: 피격 지점 이펙트/사운드 재생 코드 추가 예정
 	}
+	
+	else
+	{
+		// 아무것도 맞지 않았다는 로그
+		UE_LOG(LogTemp, Warning, TEXT("트레이스 히트 없음 (사거리 끝까지 아무것도 안 맞음)"));
+	}
+
 }
 
 void UCombatComponent::StartReload()

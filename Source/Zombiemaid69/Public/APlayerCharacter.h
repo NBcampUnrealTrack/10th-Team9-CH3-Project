@@ -112,11 +112,11 @@ protected:
 
 	/** 기본 걷기 속도 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
-	float BaseWalkSpeed = 300.0f;
+	float BaseWalkSpeed = 400.0f;
 
 	/** 달리기 시 곱해줄 배율 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
-	float SprintSpeedMultiplier = 1.5f;
+	float SprintSpeedMultiplier = 1.8f;
 
 	/** 현재 스프린트를 하고 싶어하는 상태인지 (실제 속도 적용은 Tick에서 스태미나 체크 후 결정) */
 	bool bWantsToSprint = false;

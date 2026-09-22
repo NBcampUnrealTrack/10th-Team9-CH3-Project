@@ -20,6 +20,12 @@ AEnemy::AEnemy()
 	// AIController가 자동으로 Enemy를 조종하도록 설정
 	AutoPossessAI = EAutoPossessAI::PlacedInWorldOrSpawned;
 
+	//총기 Visibility Trace가 Enemy를 피격할 수 있도록 설정
+	GetCapsuleComponent()->SetCollisionResponseToChannel(
+		ECC_Visibility,
+		ECR_Block
+	);
+
 	//스탯
 	MaxHealth = 0.0f;
 	CurrentHealth = 0.0f;
@@ -37,6 +43,7 @@ AEnemy::AEnemy()
 
 	//최초 감지 범위 기본값
 	DetectionRange = 1000.0f;
+
 	//360도 범위 감지용 Sphere 생성
 	DetectionSphere = CreateDefaultSubobject<USphereComponent>(TEXT("DetectionSphere"));
 	//Enemy의 Capsule에 감지 Sphere 부착
@@ -118,19 +125,16 @@ float AEnemy::TakeDamage(
 	{
 		return 0.0f;
 	}
-
 	const float ActualDamage = Super::TakeDamage(
 		DamageAmount,
 		DamageEvent,
 		EventInstigator,
 		DamageCauser
 	);
-
 	if (!IsAlive() || ActualDamage <= 0.0f)
 	{
 		return 0.0f;
 	}
-
 	const float PreviousHealth = CurrentHealth;
 
 	// 체력이 음수가 되지않게 제한
@@ -138,7 +142,6 @@ float AEnemy::TakeDamage(
 		PreviousHealth - ActualDamage,
 		0.0f
 	);
-
 	const float HealthLost = PreviousHealth - CurrentHealth;
 	if (HealthLost <= 0.0f)
 	{
@@ -155,7 +158,6 @@ float AEnemy::TakeDamage(
 		EventInstigator,
 		DamageCauser
 	);
-
 	if (!IsAlive())
 	{
 		Die();
@@ -180,7 +182,6 @@ float AEnemy::TakeDamage(
 		//공격자 추적 처리
 		AIController->OnEnemyDamaged(Attacker);
 	}
-
 	return HealthLost;
 }
 
@@ -329,7 +330,6 @@ void AEnemy::Die()
 	{
 		PlayAnimMontage(DeadMontage);
 	}
-
 	//3초 후 시체 제거
 	FTimerHandle DeadBodyTimer;
 	GetWorldTimerManager().SetTimer(
