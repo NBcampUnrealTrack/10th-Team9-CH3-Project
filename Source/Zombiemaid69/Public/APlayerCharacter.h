@@ -140,6 +140,10 @@ protected:
 public:
 	AAPlayerCharacter();
 
+	/** 현재 실제로 달리는 중인지 반환 */
+	UFUNCTION(BlueprintPure, Category = "Movement")
+	bool IsSprinting() const;
+
 protected:
 
 	/** 이동 입력을 처리하기 위해 IA에서 호출됨 */

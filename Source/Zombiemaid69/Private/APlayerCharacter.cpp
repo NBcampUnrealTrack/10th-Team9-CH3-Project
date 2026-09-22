@@ -391,6 +391,14 @@ void AAPlayerCharacter::DoSprintEnd()
 	}
 }
 
+bool AAPlayerCharacter::IsSprinting() const
+{
+	// 달리기 키를 누르고 실제로 이동하는 경우에만 달리기로 판단
+	return bWantsToSprint
+		&& GetVelocity().SizeSquared2D() > 1.0f
+		&& GetCharacterMovement()->MaxWalkSpeed > BaseWalkSpeed;
+}
+
 void AAPlayerCharacter::DoFire()
 {
 	// CombatComponent가 유효하면 발사 로직 위임

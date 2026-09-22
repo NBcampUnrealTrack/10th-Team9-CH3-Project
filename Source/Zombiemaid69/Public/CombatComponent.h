@@ -15,6 +15,10 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnFireSucceeded);
 //장전 시작 델리게이트
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnReloadStarted);
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnReloadFinished);
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnReloadCancelled);
+
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
 class ZOMBIEMAID69_API UCombatComponent : public UActorComponent
 {
@@ -79,6 +83,14 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Combat")
 	bool HasAmmo() const;
 
+	/** 재장전 애니메이션의 탄창 삽입 시점에 호출 */
+	UFUNCTION(BlueprintCallable, Category = "Combat")
+	void FinishReload();
+
+	/** 재장전 애니메이션이 중단됐을 때 호출 */
+	UFUNCTION(BlueprintCallable, Category = "Combat")
+	void CancelReload();
+
 protected:
 	/** 게임 시작 시 한 번 호출되는 언리얼 기본 함수 */
 	virtual void BeginPlay() override;
@@ -93,13 +105,7 @@ private:
 	/** 현재 장착 중인 무기의 슬롯 번호 (같은 슬롯을 다시 누르면 아무 동작도 하지 않도록 체크용) */
 	UPROPERTY(BlueprintReadOnly, Category = "Combat|Weapon", meta = (AllowPrivateAccess = "true"))
 	int32 CurrentWeaponSlotIndex = -1;
-
-	/** 재장전 완료 시점에 호출될 타이머 핸들 */
-	FTimerHandle ReloadTimerHandle;
-
+	
 	/** 실제 라인트레이스를 수행해서 대상을 맞추고 데미지를 적용하는 내부 함수 */
 	void PerformHitTrace();
-
-	/** 재장전 타이머가 끝났을 때 호출되는 콜백 함수 */
-	void FinishReload();
 };

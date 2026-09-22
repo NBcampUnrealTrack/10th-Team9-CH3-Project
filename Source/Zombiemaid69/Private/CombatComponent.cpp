@@ -135,6 +135,17 @@ void UCombatComponent::Fire()
 		return;
 	}
 
+	// 컴포넌트 소유 캐릭터 확인
+	AAPlayerCharacter* OwnerCharacter =
+		Cast<AAPlayerCharacter>(GetOwner());
+
+	// 실제 달리기 중이면 발사 차단
+	if (OwnerCharacter && OwnerCharacter->IsSprinting())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Fire() 실패: 달리기 중입니다"));
+		return;
+	}
+
 	// 재장전 중이면 발사 불가
 	if (bIsReloading)
 	{
@@ -340,20 +351,16 @@ void UCombatComponent::StartReload()
 	// 실제 재장전이 시작됐음을 블루프린트에 알림
 	OnReloadStarted.Broadcast();
 
-	// TODO: 재장전(Reload) 사운드 재생 코드 추가 예정
-
-	// ReloadDuration초 후 FinishReload() 호출
-	GetWorld()->GetTimerManager().SetTimer(
-		ReloadTimerHandle,
-		this,
-		&UCombatComponent::FinishReload,
-		EquippedWeapon->ReloadDuration,
-		false
-	);
 }
 
 void UCombatComponent::FinishReload()
 {
+	// 재장전 중이 아니면 중복 실행 방지
+	if (!bIsReloading)
+	{
+		return;
+	}
+
 	// 재장전 도중 무기가 사라진 예외 상황 대비
 	if (!EquippedWeapon)
 	{
@@ -407,4 +414,15 @@ void UCombatComponent::StopAim()
 {
 	// 조준 상태를 false로 전환
 	bIsAiming = false;
+}
+
+void UCombatComponent::CancelReload()
+{
+	// 재장전 중이 아니면 아무것도 하지 않음
+	if (!bIsReloading)
+	{
+		return;
+	}
+
+	bIsReloading = false;
 }
