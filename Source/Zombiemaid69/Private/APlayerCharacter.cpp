@@ -199,9 +199,9 @@ void AAPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 
 		// 좌클릭을 누르면 DoFire 호출
 		EnhancedInputComponent->BindAction(
-			FireAction, 
-			ETriggerEvent::Started, 
-			this, 
+			FireAction,
+			ETriggerEvent::Started,
+			this,
 			&AAPlayerCharacter::DoFire
 		);
 

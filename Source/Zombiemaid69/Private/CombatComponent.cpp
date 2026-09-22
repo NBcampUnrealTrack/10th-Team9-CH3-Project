@@ -5,6 +5,7 @@
 #include "GameFramework/Character.h"
 #include "Camera/CameraComponent.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "DrawDebugHelpers.h"
 
 UCombatComponent::UCombatComponent()
 {
@@ -15,6 +16,9 @@ UCombatComponent::UCombatComponent()
 void UCombatComponent::BeginPlay()
 {
 	Super::BeginPlay();
+
+	// WeaponClasses와 같은 크기로 인스턴스 저장 배열을 준비 (처음엔 전부 nullptr)
+	WeaponInstances.SetNum(WeaponClasses.Num());
 
 	// 시작 시 0번 슬롯 무기를 기본 장착
 	if (WeaponClasses.Num() > 0)
@@ -37,74 +41,106 @@ void UCombatComponent::SwitchWeapon(int32 SlotIndex)
 		return;
 	}
 
+	// 이미 이 슬롯의 무기를 들고 있다면 아무것도 하지 않음
+	// (같은 번호를 다시 눌렀을 때 재생성/초기화되는 문제 방지)
+	if (SlotIndex == CurrentWeaponSlotIndex && EquippedWeapon)
+	{
+		return;
+	}
+
 	AActor* OwnerActor = GetOwner();
 	if (!OwnerActor)
 	{
 		return;
 	}
 
-	// 기존에 들고 있던 무기가 있다면 제거
+	// 기존에 들고 있던 무기가 있다면 파괴하지 않고 "숨김" 처리만 함
+	// (탄약 상태를 유지한 채로 인벤토리에 계속 보관)
 	if (EquippedWeapon)
 	{
-		EquippedWeapon->Destroy();
-		EquippedWeapon = nullptr;
+		EquippedWeapon->SetActorHiddenInGame(true);
+		EquippedWeapon->SetActorEnableCollision(false);
+		EquippedWeapon->SetActorTickEnabled(false);
 	}
 
-	// 선택한 슬롯의 무기 클래스로 새 무기 액터를 스폰
-	FActorSpawnParameters SpawnParams;
-	SpawnParams.Owner = OwnerActor;
+	// 선택한 슬롯의 무기 인스턴스를 가져옴 (이미 생성된 적 있다면 재사용)
+	AWeaponBase* TargetWeapon = WeaponInstances[SlotIndex];
 
-	EquippedWeapon = GetWorld()->SpawnActor<AWeaponBase>(WeaponClasses[SlotIndex], SpawnParams);
+	// 아직 한 번도 생성된 적 없는 무기라면, 이번에 처음 스폰
+	if (!TargetWeapon)
+	{
+		FActorSpawnParameters SpawnParams;
+		SpawnParams.Owner = OwnerActor;
+
+		TargetWeapon = GetWorld()->SpawnActor<AWeaponBase>(WeaponClasses[SlotIndex], SpawnParams);
+
+		if (TargetWeapon)
+		{
+			// 생성된 인스턴스를 배열에 저장해서 다음부터는 재사용
+			WeaponInstances[SlotIndex] = TargetWeapon;
+
+			// 무기를 캐릭터의 1인칭 팔 메시 손 소켓에 부착 (최초 1회만 수행)
+			ACharacter* OwnerCharacter = Cast<ACharacter>(OwnerActor);
+			if (OwnerCharacter)
+			{
+				USkeletalMeshComponent* CharacterMesh = OwnerCharacter->FindComponentByClass<USkeletalMeshComponent>();
+				if (CharacterMesh)
+				{
+					TargetWeapon->AttachToComponent(
+						CharacterMesh,
+						FAttachmentTransformRules::SnapToTargetNotIncludingScale,
+						WeaponSocketName
+					);
+				}
+			}
+
+			// 새로 생성된 무기에 한해서만 보유 특전을 적용 (재사용 시에는 이미 적용되어 있으므로 다시 적용하지 않음)
+			if (UPerkComponent* Perks = OwnerActor->FindComponentByClass<UPerkComponent>())
+			{
+				Perks->ReapplyWeaponPerks(TargetWeapon);
+			}
+		}
+	}
+
+	// 현재 장착 무기와 슬롯 번호를 갱신
+	EquippedWeapon = TargetWeapon;
+	CurrentWeaponSlotIndex = SlotIndex;
 
 	if (EquippedWeapon)
 	{
-		// 무기를 캐릭터의 1인칭 팔 메시 손 소켓에 부착
-		ACharacter* OwnerCharacter = Cast<ACharacter>(OwnerActor);
-		if (OwnerCharacter)
-		{
-			USkeletalMeshComponent* CharacterMesh = OwnerCharacter->FindComponentByClass<USkeletalMeshComponent>();
-			if (CharacterMesh)
-			{
-				EquippedWeapon->AttachToComponent(
-					CharacterMesh,
-					FAttachmentTransformRules::SnapToTargetNotIncludingScale,
-					WeaponSocketName
-				);
-			}
-		}
+		// 새로 장착하는 무기를 다시 보이고 활성화
+		EquippedWeapon->SetActorHiddenInGame(false);
+		EquippedWeapon->SetActorEnableCollision(true);
+		EquippedWeapon->SetActorTickEnabled(true);
 
-		// 새로 장착한 무기에 이미 보유한 특전을 재적용
-		if (AActor* PerkOwnerActor = GetOwner())
-		{
-			if (UPerkComponent* Perks = OwnerActor->FindComponentByClass<UPerkComponent>())
-			{
-				Perks->ReapplyWeaponPerks(EquippedWeapon);
-			}
-		}
-
-		// 무기 교체 시 탄약 UI 갱신
+		// 무기 교체 시 탄약 UI 갱신 (기존에 갖고 있던 탄약 상태 그대로 표시됨)
 		OnAmmoChanged.Broadcast(EquippedWeapon->CurrentAmmoInClip, EquippedWeapon->ReserveAmmo);
 	}
 }
 
 void UCombatComponent::Fire()
 {
+	// 함수 진입 확인용 로그
+	UE_LOG(LogTemp, Warning, TEXT("Fire() 호출됨"));
+
 	// 장착된 무기가 없으면 발사 불가
 	if (!EquippedWeapon)
 	{
+		UE_LOG(LogTemp, Error, TEXT("Fire() 실패: EquippedWeapon이 nullptr입니다"));
 		return;
 	}
 
 	// 재장전 중이면 발사 불가
 	if (bIsReloading)
 	{
+		UE_LOG(LogTemp, Warning, TEXT("Fire() 실패: 재장전 중입니다"));
 		return;
 	}
 
 	// 총알이 없으면 발사되지 않도록 함
 	if (!HasAmmo())
 	{
-		// 탄약이 없다는 사운드(마른 격발음)를 재생할 자리
+		UE_LOG(LogTemp, Warning, TEXT("Fire() 실패: 탄약이 없습니다 (CurrentAmmoInClip: %d)"), EquippedWeapon->CurrentAmmoInClip);
 		// TODO: 총알 없음(Dry Fire) 사운드 재생 코드 추가 예정
 		return;
 	}
@@ -115,6 +151,7 @@ void UCombatComponent::Fire()
 	// 마지막 발사 시점으로부터 발사 간격(FireRate)이 지나지 않았다면 발사 거부 (연사속도 제한)
 	if (CurrentTime - LastFireTime < EquippedWeapon->FireRate)
 	{
+		UE_LOG(LogTemp, Warning, TEXT("Fire() 실패: 발사 간격(FireRate) 미충족"));
 		return;
 	}
 
@@ -130,7 +167,9 @@ void UCombatComponent::Fire()
 	// 탄약 변경 사항을 UI에 알림
 	OnAmmoChanged.Broadcast(EquippedWeapon->CurrentAmmoInClip, EquippedWeapon->ReserveAmmo);
 
-	// 총 발사 사운드를 재생할 자리
+	// 실제로 발사가 완료됐다는 로그
+	UE_LOG(LogTemp, Warning, TEXT("발사 성공! 남은 탄약: %d / %d"), EquippedWeapon->CurrentAmmoInClip, EquippedWeapon->ReserveAmmo);
+
 	// TODO: 총기 발사(Fire) 사운드 재생 코드 추가 예정
 }
 
@@ -193,9 +232,25 @@ void UCombatComponent::PerformHitTrace()
 		QueryParams
 	);
 
+		// 디버그용: 트레이스 라인을 화면에 시각적으로 표시(2초간 유지)
+		// 빨간색이면 맞은 지점까지, 초록색이면 아무것도 안 맞고 사거리 끝까지 그려짐
+		DrawDebugLine(
+			GetWorld(),
+			StartLocation,
+			bHit ? HitResult.Location : EndLocation,
+			bHit ? FColor::Red : FColor::Green,
+			false,
+			2.0f,
+			0,
+			1.0f
+		);
+
 	// 무언가에 맞았고, 맞은 대상이 유효한 액터라면
 	if (bHit && HitResult.GetActor())
 	{
+		// 무엇을 맞췄는지 로그로 확인
+		UE_LOG(LogTemp, Warning, TEXT("트레이스 히트: %s"), *HitResult.GetActor()->GetName());
+
 		// 언리얼 표준 데미지 함수를 호출
 		// 이 함수가 내부적으로 대상 액터의 TakeDamage()를 자동으로 호출해줌
 		UGameplayStatics::ApplyPointDamage(
@@ -211,6 +266,13 @@ void UCombatComponent::PerformHitTrace()
 		// 피격 이펙트(피격 마크, 파티클 등)를 재생할 자리
 		// TODO: 피격 지점 이펙트/사운드 재생 코드 추가 예정
 	}
+	
+	else
+	{
+		// 아무것도 맞지 않았다는 로그
+		UE_LOG(LogTemp, Warning, TEXT("트레이스 히트 없음 (사거리 끝까지 아무것도 안 맞음)"));
+	}
+
 }
 
 void UCombatComponent::StartReload()
