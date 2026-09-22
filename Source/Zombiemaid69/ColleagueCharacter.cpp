@@ -46,7 +46,7 @@ void AColleagueCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInput
 
 bool AColleagueCharacter::PlayFireAnimation()
 {
-	if (!IsValid(FireMontage) || IsFiring())
+	if (!bWeaponEquipped || !IsValid(FireMontage) || IsFiring())
 	{
 		return false;
 	}
@@ -70,6 +70,10 @@ bool AColleagueCharacter::IsFiring() const
 
 bool AColleagueCharacter::TryFireAtTarget(AActor* Target)
 {
+	if (!bWeaponEquipped)
+	{
+		return false;
+	}
 	UWorld* World = GetWorld();
 	AEnemy* Enemy = Cast<AEnemy>(Target);
 	AController* OwnerController = GetController();
@@ -154,6 +158,12 @@ bool AColleagueCharacter::TryFireAtTarget(AActor* Target)
 			//발사 시작 시 요청 및 속도 정지
 			OwnerController->StopMovement();
 			Movement->StopMovementImmediately();
+
+			PlayShotEffects(
+				Muzzle,
+				Hit.ImpactPoint,
+				Hit.ImpactNormal
+			);
 			
 			UGameplayStatics::ApplyPointDamage(
 				Enemy,
