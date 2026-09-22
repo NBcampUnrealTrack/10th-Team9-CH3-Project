@@ -73,6 +73,12 @@ private:
 	/** 마지막으로 발사한 시점의 월드 시간 (연사속도 제한 계산용) */
 	float LastFireTime = -100.0f;
 
+	/** WeaponClasses와 같은 순서로, 이미 생성된 무기 인스턴스를 저장해두는 배열 (탄약 상태를 유지하기 위해 파괴하지 않고 재사용) */
+	TArray<AWeaponBase*> WeaponInstances;
+
+	/** 현재 장착 중인 무기의 슬롯 번호 (같은 슬롯을 다시 누르면 아무 동작도 하지 않도록 체크용) */
+	int32 CurrentWeaponSlotIndex = -1;
+
 	/** 재장전 완료 시점에 호출될 타이머 핸들 */
 	FTimerHandle ReloadTimerHandle;
 
