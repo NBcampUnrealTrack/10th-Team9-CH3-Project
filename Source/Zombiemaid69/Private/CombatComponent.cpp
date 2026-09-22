@@ -73,7 +73,10 @@ void UCombatComponent::SwitchWeapon(int32 SlotIndex)
 		FActorSpawnParameters SpawnParams;
 		SpawnParams.Owner = OwnerActor;
 
-		TargetWeapon = GetWorld()->SpawnActor<AWeaponBase>(WeaponClasses[SlotIndex], SpawnParams);
+		TargetWeapon = GetWorld()->SpawnActor<AWeaponBase>(
+			WeaponClasses[SlotIndex],
+			SpawnParams
+		);
 
 		if (TargetWeapon)
 		{
@@ -98,6 +101,8 @@ void UCombatComponent::SwitchWeapon(int32 SlotIndex)
 					);
 				}
 			}
+		}
+	}
 
 	// 현재 장착 무기와 슬롯 번호를 갱신
 	EquippedWeapon = TargetWeapon;
@@ -110,8 +115,11 @@ void UCombatComponent::SwitchWeapon(int32 SlotIndex)
 		EquippedWeapon->SetActorEnableCollision(true);
 		EquippedWeapon->SetActorTickEnabled(true);
 
-		// 무기 교체 시 탄약 UI 갱신 (기존에 갖고 있던 탄약 상태 그대로 표시됨)
-		OnAmmoChanged.Broadcast(EquippedWeapon->CurrentAmmoInClip, EquippedWeapon->ReserveAmmo);
+		// 무기 교체 시 탄약 UI 갱신
+		OnAmmoChanged.Broadcast(
+			EquippedWeapon->CurrentAmmoInClip,
+			EquippedWeapon->ReserveAmmo
+		);
 	}
 }
 
@@ -137,7 +145,13 @@ void UCombatComponent::Fire()
 	// 총알이 없으면 발사되지 않도록 함
 	if (!HasAmmo())
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Fire() 실패: 탄약이 없습니다 (CurrentAmmoInClip: %d)"), EquippedWeapon->CurrentAmmoInClip);
+		UE_LOG(
+			LogTemp,
+			Warning,
+			TEXT("Fire() 실패: 탄약이 없습니다 (CurrentAmmoInClip: %d)"),
+			EquippedWeapon->CurrentAmmoInClip
+		);
+
 		// TODO: 총알 없음(Dry Fire) 사운드 재생 코드 추가 예정
 		return;
 	}
@@ -145,7 +159,7 @@ void UCombatComponent::Fire()
 	// 현재 월드 시간을 가져옴
 	const float CurrentTime = GetWorld()->GetTimeSeconds();
 
-	// 마지막 발사 시점으로부터 발사 간격(FireRate)이 지나지 않았다면 발사 거부 (연사속도 제한)
+	// 마지막 발사 시점으로부터 발사 간격(FireRate)이 지나지 않았다면 발사 거부
 	if (CurrentTime - LastFireTime < EquippedWeapon->FireRate)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Fire() 실패: 발사 간격(FireRate) 미충족"));
@@ -155,17 +169,26 @@ void UCombatComponent::Fire()
 	// 마지막 발사 시점을 현재 시간으로 갱신
 	LastFireTime = CurrentTime;
 
-	// 실제 히트 판정 및 데미지 처리를 수행하는 내부 함수 호출
+	// 실제 히트 판정 및 데미지 처리를 수행
 	PerformHitTrace();
 
 	// 탄창에서 탄약 1발 소모
 	EquippedWeapon->CurrentAmmoInClip--;
 
 	// 탄약 변경 사항을 UI에 알림
-	OnAmmoChanged.Broadcast(EquippedWeapon->CurrentAmmoInClip, EquippedWeapon->ReserveAmmo);
+	OnAmmoChanged.Broadcast(
+		EquippedWeapon->CurrentAmmoInClip,
+		EquippedWeapon->ReserveAmmo
+	);
 
 	// 실제로 발사가 완료됐다는 로그
-	UE_LOG(LogTemp, Warning, TEXT("발사 성공! 남은 탄약: %d / %d"), EquippedWeapon->CurrentAmmoInClip, EquippedWeapon->ReserveAmmo);
+	UE_LOG(
+		LogTemp,
+		Warning,
+		TEXT("발사 성공! 남은 탄약: %d / %d"),
+		EquippedWeapon->CurrentAmmoInClip,
+		EquippedWeapon->ReserveAmmo
+	);
 
 	// TODO: 총기 발사(Fire) 사운드 재생 코드 추가 예정
 }
@@ -185,7 +208,7 @@ void UCombatComponent::PerformHitTrace()
 		return;
 	}
 
-	// 소유 액터를 ACharacter로 캐스팅 (카메라 컴포넌트를 가져오기 위함)
+	// 소유 액터를 ACharacter로 캐스팅
 	ACharacter* OwnerCharacter = Cast<ACharacter>(OwnerActor);
 	if (!OwnerCharacter)
 	{
@@ -193,7 +216,9 @@ void UCombatComponent::PerformHitTrace()
 	}
 
 	// 캐릭터가 갖고 있는 카메라 컴포넌트를 찾음
-	UCameraComponent* CameraComp = OwnerCharacter->FindComponentByClass<UCameraComponent>();
+	UCameraComponent* CameraComp =
+		OwnerCharacter->FindComponentByClass<UCameraComponent>();
+
 	if (!CameraComp)
 	{
 		return;
@@ -206,7 +231,8 @@ void UCombatComponent::PerformHitTrace()
 	const FVector ForwardVector = CameraComp->GetForwardVector();
 
 	// 트레이스 종료 지점 = 시작 지점에서 정면 방향으로 사거리만큼 이동한 지점
-	const FVector EndLocation = StartLocation + (ForwardVector * EquippedWeapon->FireRange);
+	const FVector EndLocation =
+		StartLocation + (ForwardVector * EquippedWeapon->FireRange);
 
 	// 라인트레이스 결과를 담을 구조체
 	FHitResult HitResult;
@@ -214,13 +240,13 @@ void UCombatComponent::PerformHitTrace()
 	// 트레이스 옵션 설정용 구조체
 	FCollisionQueryParams QueryParams;
 
-	// 트레이스가 자기 자신(발사한 캐릭터)에게는 맞지 않도록 무시 대상으로 등록
+	// 발사한 캐릭터는 트레이스에서 제외
 	QueryParams.AddIgnoredActor(OwnerActor);
 
 	// 무기 자신도 트레이스에서 제외
 	QueryParams.AddIgnoredActor(EquippedWeapon);
 
-	// 실제 라인트레이스 실행 (Visibility 채널 기준으로 충돌 검사)
+	// 실제 라인트레이스 실행
 	const bool bHit = GetWorld()->LineTraceSingleByChannel(
 		HitResult,
 		StartLocation,
@@ -229,8 +255,7 @@ void UCombatComponent::PerformHitTrace()
 		QueryParams
 	);
 
-	// 디버그용: 트레이스 라인을 화면에 시각적으로 표시(2초간 유지)
-	// 빨간색이면 맞은 지점까지, 초록색이면 아무것도 안 맞고 사거리 끝까지 그려짐
+	// 디버그용 트레이스 라인 표시
 	DrawDebugLine(
 		GetWorld(),
 		StartLocation,
@@ -246,10 +271,14 @@ void UCombatComponent::PerformHitTrace()
 	if (bHit && HitResult.GetActor())
 	{
 		// 무엇을 맞췄는지 로그로 확인
-		UE_LOG(LogTemp, Warning, TEXT("트레이스 히트: %s"), *HitResult.GetActor()->GetName());
+		UE_LOG(
+			LogTemp,
+			Warning,
+			TEXT("트레이스 히트: %s"),
+			*HitResult.GetActor()->GetName()
+		);
 
-		// 언리얼 표준 데미지 함수를 호출
-		// 이 함수가 내부적으로 대상 액터의 TakeDamage()를 자동으로 호출해줌
+		// 언리얼 표준 데미지 함수 호출
 		UGameplayStatics::ApplyPointDamage(
 			HitResult.GetActor(),
 			EquippedWeapon->WeaponDamage,
@@ -260,16 +289,17 @@ void UCombatComponent::PerformHitTrace()
 			nullptr
 		);
 
-		// 피격 이펙트(피격 마크, 파티클 등)를 재생할 자리
 		// TODO: 피격 지점 이펙트/사운드 재생 코드 추가 예정
 	}
-
 	else
 	{
 		// 아무것도 맞지 않았다는 로그
-		UE_LOG(LogTemp, Warning, TEXT("트레이스 히트 없음 (사거리 끝까지 아무것도 안 맞음)"));
+		UE_LOG(
+			LogTemp,
+			Warning,
+			TEXT("트레이스 히트 없음 (사거리 끝까지 아무것도 안 맞음)")
+		);
 	}
-
 }
 
 void UCombatComponent::StartReload()
@@ -301,10 +331,9 @@ void UCombatComponent::StartReload()
 	// 재장전 상태로 전환
 	bIsReloading = true;
 
-	// 재장전 사운드를 재생할 자리
 	// TODO: 재장전(Reload) 사운드 재생 코드 추가 예정
 
-	// ReloadDuration초 후에 FinishReload() 함수가 자동 호출되도록 타이머 설정
+	// ReloadDuration초 후 FinishReload() 호출
 	GetWorld()->GetTimerManager().SetTimer(
 		ReloadTimerHandle,
 		this,
@@ -316,18 +345,20 @@ void UCombatComponent::StartReload()
 
 void UCombatComponent::FinishReload()
 {
-	// 장착된 무기가 없으면 처리하지 않음 (재장전 도중 무기가 사라진 예외 상황 대비)
+	// 재장전 도중 무기가 사라진 예외 상황 대비
 	if (!EquippedWeapon)
 	{
 		bIsReloading = false;
 		return;
 	}
 
-	// 탄창을 채우는 데 필요한 탄약 수 계산 (최대치 - 현재 남은 탄약)
-	const int32 AmmoNeeded = EquippedWeapon->MaxAmmoInClip - EquippedWeapon->CurrentAmmoInClip;
+	// 탄창을 채우는 데 필요한 탄약 수 계산
+	const int32 AmmoNeeded =
+		EquippedWeapon->MaxAmmoInClip - EquippedWeapon->CurrentAmmoInClip;
 
-	// 실제로 채울 수 있는 양은 필요한 양과 예비 탄약 중 더 작은 값
-	const int32 AmmoToReload = FMath::Min(AmmoNeeded, EquippedWeapon->ReserveAmmo);
+	// 필요한 양과 예비 탄약 중 더 작은 값만 장전
+	const int32 AmmoToReload =
+		FMath::Min(AmmoNeeded, EquippedWeapon->ReserveAmmo);
 
 	// 탄창에 탄약 추가
 	EquippedWeapon->CurrentAmmoInClip += AmmoToReload;
@@ -339,13 +370,15 @@ void UCombatComponent::FinishReload()
 	bIsReloading = false;
 
 	// 변경된 탄약 정보를 UI에 알림
-	OnAmmoChanged.Broadcast(EquippedWeapon->CurrentAmmoInClip, EquippedWeapon->ReserveAmmo);
+	OnAmmoChanged.Broadcast(
+		EquippedWeapon->CurrentAmmoInClip,
+		EquippedWeapon->ReserveAmmo
+	);
 }
 
 bool UCombatComponent::HasAmmo() const
 {
-	// cpp에서는 WeaponBase.h가 이미 #include 되어 있어서 완전한 타입 정보를 알고 있으므로
-	// EquippedWeapon의 멤버에 안전하게 접근 가능
+	// 장착 무기가 존재하고 탄창에 탄약이 남아있는지 확인
 	return EquippedWeapon && EquippedWeapon->CurrentAmmoInClip > 0;
 }
 
