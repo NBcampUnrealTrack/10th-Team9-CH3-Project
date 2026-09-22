@@ -25,6 +25,10 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "Combat|Weapon")
 	AWeaponBase* EquippedWeapon;
 
+	/** 현재 선택된 무기 슬롯 번호 (0~3) */
+	UPROPERTY(BlueprintReadOnly, Category = "Combat|Weapon")
+	int32 CurrentWeaponSlotIndex = 0;
+
 	/** 무기를 부착할 소켓 이름 (1인칭 팔 메시의 손 소켓) */
 	UPROPERTY(EditAnywhere, Category = "Combat|Weapon")
 	FName WeaponSocketName = "hand_r";
