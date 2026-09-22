@@ -1,4 +1,5 @@
 ﻿#include "CombatComponent.h"
+#include "APlayerCharacter.h"
 #include "PerkComponent.h"
 #include "WeaponBase.h"
 #include "Kismet/GameplayStatics.h"
@@ -80,27 +81,23 @@ void UCombatComponent::SwitchWeapon(int32 SlotIndex)
 			WeaponInstances[SlotIndex] = TargetWeapon;
 
 			// 무기를 캐릭터의 1인칭 팔 메시 손 소켓에 부착 (최초 1회만 수행)
-			ACharacter* OwnerCharacter = Cast<ACharacter>(OwnerActor);
+			AAPlayerCharacter* OwnerCharacter =
+				Cast<AAPlayerCharacter>(OwnerActor);
+
 			if (OwnerCharacter)
 			{
-				USkeletalMeshComponent* CharacterMesh = OwnerCharacter->FindComponentByClass<USkeletalMeshComponent>();
-				if (CharacterMesh)
+				USkeletalMeshComponent* FirstPersonMesh =
+					OwnerCharacter->GetFirstPersonMesh();
+
+				if (FirstPersonMesh)
 				{
 					TargetWeapon->AttachToComponent(
-						CharacterMesh,
+						FirstPersonMesh,
 						FAttachmentTransformRules::SnapToTargetNotIncludingScale,
 						WeaponSocketName
 					);
 				}
 			}
-
-			// 새로 생성된 무기에 한해서만 보유 특전을 적용 (재사용 시에는 이미 적용되어 있으므로 다시 적용하지 않음)
-			if (UPerkComponent* Perks = OwnerActor->FindComponentByClass<UPerkComponent>())
-			{
-				Perks->ReapplyWeaponPerks(TargetWeapon);
-			}
-		}
-	}
 
 	// 현재 장착 무기와 슬롯 번호를 갱신
 	EquippedWeapon = TargetWeapon;
