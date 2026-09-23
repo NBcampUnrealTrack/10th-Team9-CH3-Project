@@ -329,9 +329,8 @@ void AEnemyAIController::OnEnemyDamaged(AActor* Attacker)
 	{
 		return;
 	}
-	//플레이어나 동료 공격만 추적
-	if (!Attacker->ActorHasTag(TEXT("Player")) &&
-		!Attacker->ActorHasTag(TEXT("PlayerAlly")))
+	//Player 태그가 있는 대상만 추적
+	if (!Attacker->ActorHasTag(TEXT("Player")))
 	{
 		return;
 	}
@@ -353,7 +352,7 @@ void AEnemyAIController::OnEnemyDamaged(AActor* Attacker)
 	{
 		return;
 	}
-	//추정 중이면 경직만 적용
+	//추적 중이면 경직만 적용
 	if (CurrentState == EEnemyAIState::Chase)
 	{
 		StartStun();
@@ -398,12 +397,8 @@ void AEnemyAIController::OnTargetDetected(AActor* DetectedActor)
 	{
 		return;
 	}
-	//Player 또는 PlayerAlly만 타겟 가능
-	const bool bIsPlayer = DetectedActor->ActorHasTag(TEXT("Player"));
-	const bool bIsPlayerAlly = DetectedActor->ActorHasTag(TEXT("PlayerAlly"));
-
-	//플레이어 또는 동료만 감지
-	if (!bIsPlayer && !bIsPlayerAlly)
+	//Player 태그가 있는 대상만 감지
+	if (!DetectedActor->ActorHasTag(TEXT("Player")))
 	{
 		return;
 	}
@@ -416,34 +411,6 @@ void AEnemyAIController::OnTargetDetected(AActor* DetectedActor)
 	if (CurrentState == EEnemyAIState::Attack ||
 		CurrentState == EEnemyAIState::Skill)
 	{
-		return;
-	}
-	//현재 Player를 타겟 중이면 PlayAlly는 무시
-	if (TargetActor &&
-		TargetActor->ActorHasTag(TEXT("Player")) &&
-		bIsPlayerAlly)
-	{
-		return;
-	}
-	//PlayerAlly를 타겟 중 Player를 발견하면 Player로 변경
-	if (TargetActor &&
-		TargetActor->ActorHasTag(TEXT("PlayerAlly")) &&
-		bIsPlayer)
-	{
-		TargetActor = DetectedActor;
-		//추적 중이면 Alert 없이 바로 Player 추적
-		if (CurrentState == EEnemyAIState::Chase)
-		{
-			MoveToActor(
-				TargetActor,
-				-1.0f,
-				true,
-				true,
-				true,
-				nullptr,
-				true
-			);
-		}
 		return;
 	}
 	//이미 추적 중이면 현재 타겟 유지
@@ -461,12 +428,12 @@ void AEnemyAIController::OnTargetDetected(AActor* DetectedActor)
 	CurrentState = EEnemyAIState::Alert;
 	StopMovement();
 
+	//Alert 애니메이션 재생
 	AEnemy* Enemy = Cast<AEnemy>(GetPawn());
 	if (Enemy && Enemy->AlertMontage)
 	{
 		Enemy->PlayAnimMontage(Enemy->AlertMontage);
 	}
-	
 }
 
 void AEnemyAIController::StartStun()
