@@ -129,11 +129,12 @@ void ABossEnemyAIController::Tick(float DeltaTime)
 	{
 		return;
 	}
-	UseSkill(); //스킬 사용
+	//스킬 사용
+	UseSkill();
 
 	//다음 스킬 대기시간 랜덤 설정
 	SkillCooldownRemaining = FMath::FRandRange(
-		MinSkillCooldown, MaxSkillCooldown
+		MinSkillCooldown,
+		MaxSkillCooldown
 	);
 }
-

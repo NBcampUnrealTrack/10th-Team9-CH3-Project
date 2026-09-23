@@ -1,4 +1,5 @@
 ﻿#include "BossMother.h"
+#include "AIController.h"
 #include "NavigationSystem.h"
 
 ABossMother::ABossMother()
@@ -17,6 +18,7 @@ ABossMother::ABossMother()
 	AwakenedMaxHealth = 9000.0f;
 	AwakenedAttackMultiplier = 1.5f;
 	AwakenHealthRatio = 0.5f;
+	AwakenMontage = nullptr;
 
 	//좀비 소환 설정
 	MinSummonCount = 1;
@@ -38,19 +40,16 @@ float ABossMother::TakeDamage(
 		EventInstigator,
 		DamageCauser
 	);
-
 	//죽었거나 이미 각성했다면 확인하지 않음
 	if (!IsAlive() || bIsAwakened)
 	{
 		return HealthLost;
 	}
-
 	//체력이 50% 이하가 되면 각성
 	if (CurrentHealth <= MaxHealth * AwakenHealthRatio)
 	{
 		Awaken();
 	}
-
 	return HealthLost;
 }
 
@@ -71,6 +70,17 @@ void ABossMother::Awaken()
 	//공격력 증가
 	AttackDamage *= AwakenedAttackMultiplier;
 
+	//현재 이동 정지
+	AAIController* AIController = Cast<AAIController>(GetController());
+	if (AIController)
+	{
+		AIController->StopMovement();
+	}
+	//각성 애니메이션 재생
+	if (AwakenMontage)
+	{
+		PlayAnimMontage(AwakenMontage);
+	}
 	//각성 확인용 로그
 	UE_LOG(
 		LogTemp,
@@ -146,6 +156,9 @@ void ABossMother::OnSkillHit()
 
 		if (SpawnedZombie)
 		{
+			//소환 직후 감지 범위 안의 대상 확인
+			SpawnedZombie->CheckDetectionTargets();
+
 			//소환 확인용 로그
 			UE_LOG(
 				LogTemp,
@@ -156,3 +169,4 @@ void ABossMother::OnSkillHit()
 		}
 	}
 }
+
