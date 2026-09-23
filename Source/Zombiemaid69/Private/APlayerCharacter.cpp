@@ -78,7 +78,7 @@ AAPlayerCharacter::AAPlayerCharacter()
 	// 회복 아이템(붕대/주사기) 관리 컴포넌트 생성 및 부착
 	HealingComponent = CreateDefaultSubobject<UHealingComponent>(TEXT("HealingComponent"));
 	static ConstructorHelpers::FObjectFinder<UAnimSequence> BandageAnimationAsset(
-		TEXT("/Game/FirstPerson/Anims/AN_FP_Bandage_Wrap_3x.AN_FP_Bandage_Wrap_3x"));
+		TEXT("/Game/FirstPerson/Anims/AN_FP_Bandage.AN_FP_Bandage"));
 	if (BandageAnimationAsset.Succeeded())
 	{
 		BandageAnimation = BandageAnimationAsset.Object;

@@ -109,7 +109,7 @@ protected:
 	/** 회복 아이템(붕대/주사기)을 관리하는 컴포넌트 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
 	class UHealingComponent* HealingComponent;
-	/** First-person bandage motion played after the item is accepted. */
+	/** 붕대 사용이 시작된 후 재생되는 1인칭 애니메이션 */
 	UPROPERTY(EditDefaultsOnly, Category = "Healing|Animation")
 	TObjectPtr<UAnimSequence> BandageAnimation = nullptr;
 
