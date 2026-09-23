@@ -8,7 +8,16 @@
 class UStatsComponent;
 
 /** 아이템 사용 시작/종료를 알리는 델리게이트 (캐릭터가 이동속도 조절에 사용) */
-DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnHealingStart);
+//DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnHealingStart); 수정 전 코드
+
+
+/** 아이템 사용 시작/종료를 알리는 델리게이트 (캐릭터가 이동속도 조절에 사용) HUD에 회복 시간 알려주는 코드*/
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(
+	FOnHealingStart,
+	float,
+	UseDuration
+);
+
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnHealingEnd);
 
 /** 붕대/주사기 개수가 바뀔 때마다 UI에서 구독할 델리게이트 */
