@@ -36,17 +36,17 @@ void UCombatComponent::SwitchWeapon(int32 SlotIndex)
 		return;
 	}
 
-	// 재장전 중에는 무기 교체를 막음
-	if (bIsReloading)
-	{
-		return;
-	}
-
 	// 이미 이 슬롯의 무기를 들고 있다면 아무것도 하지 않음
 	// (같은 번호를 다시 눌렀을 때 재생성/초기화되는 문제 방지)
 	if (SlotIndex == CurrentWeaponSlotIndex && EquippedWeapon)
 	{
 		return;
+	}
+
+	//재장전 중 무기를 바꾸면 기존 재장전 취소
+	if (bIsReloading)
+	{
+		CancelReload();
 	}
 
 	AActor* OwnerActor = GetOwner();
@@ -425,4 +425,5 @@ void UCombatComponent::CancelReload()
 	}
 
 	bIsReloading = false;
+	OnReloadCancelled.Broadcast();
 }

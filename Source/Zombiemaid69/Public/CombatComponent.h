@@ -59,6 +59,10 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "Combat|Events")
 	FOnReloadStarted OnReloadStarted;
 
+	/** 재장전이 취소됐을 때 호출 */
+	UPROPERTY(BlueprintAssignable, Category = "Combat|Events")
+	FOnReloadCancelled OnReloadCancelled;
+
 	/** 발사 시도 (좌클릭을 누른 순간 캐릭터에서 호출) */
 	UFUNCTION(BlueprintCallable, Category = "Combat")
 	void Fire();
