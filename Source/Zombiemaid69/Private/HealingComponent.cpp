@@ -106,7 +106,10 @@ void UHealingComponent::StartUsingItem(float HealAmount, float UseDuration)
 	PendingHealAmount = HealAmount;
 
 	// 아이템 사용을 시작했다는 이벤트 브로드캐스트 (애니메이션 재생 등에서 구독 가능)
-	OnHealingStart.Broadcast();
+	//OnHealingStart.Broadcast(); 수정하기 전 코드
+
+	// 아이템 사용을 시작했다는 이벤트 브로드캐스트 (애니메이션 재생 등에서 구독 가능) 
+	OnHealingStart.Broadcast(UseDuration); // 수정 된 코드
 
 	// TODO: 붕대/주사기 사용 애니메이션 및 사운드 재생 코드 추가 예정
 
