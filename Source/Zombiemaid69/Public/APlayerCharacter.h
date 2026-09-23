@@ -9,6 +9,7 @@ class UInputComponent;
 class USkeletalMeshComponent;
 class UCameraComponent;
 class UInputAction;
+class UAnimSequence;
 struct FInputActionValue;
 // 레벨업 로직
 class UStatsComponent;
@@ -23,6 +24,9 @@ class ZOMBIEMAID69_API AAPlayerCharacter : public ACharacter
 	/** 폰 메쉬 : 1인칭 시점 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
 	USkeletalMeshComponent* FirstPersonMesh;
+
+	TWeakObjectPtr<class AWeaponBase> BandageHiddenWeapon;
+	bool bBandageWeaponWasHidden = false;
 
 	/** 1인칭 카메라 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
@@ -105,6 +109,9 @@ protected:
 	/** 회복 아이템(붕대/주사기)을 관리하는 컴포넌트 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
 	class UHealingComponent* HealingComponent;
+	/** First-person bandage motion played after the item is accepted. */
+	UPROPERTY(EditDefaultsOnly, Category = "Healing|Animation")
+	TObjectPtr<UAnimSequence> BandageAnimation = nullptr;
 
 	/** 레벨업 특전(Perk)을 관리하는 컴포넌트 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))

@@ -1,5 +1,6 @@
 ﻿#include "APlayerCharacter.h"
 #include "Animation/AnimInstance.h"
+#include "Animation/AnimSequence.h"
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/SkeletalMeshComponent.h"
@@ -10,10 +11,13 @@
 #include "CombatComponent.h"
 #include "PerkComponent.h"
 #include "HealingComponent.h"
+#include "WeaponBase.h"
 #include "Kismet/GameplayStatics.h"
 #include "Zombiemaid69.h"
 #include "LastCureGameMode.h"
 #include "ColleagueAIController.h"
+#include "UObject/ConstructorHelpers.h"
+#include "UObject/UObjectGlobals.h"
 
 
 AAPlayerCharacter::AAPlayerCharacter()
@@ -73,6 +77,12 @@ AAPlayerCharacter::AAPlayerCharacter()
 
 	// 회복 아이템(붕대/주사기) 관리 컴포넌트 생성 및 부착
 	HealingComponent = CreateDefaultSubobject<UHealingComponent>(TEXT("HealingComponent"));
+	static ConstructorHelpers::FObjectFinder<UAnimSequence> BandageAnimationAsset(
+		TEXT("/Game/FirstPerson/Anims/AN_FP_Bandage_Wrap_3x.AN_FP_Bandage_Wrap_3x"));
+	if (BandageAnimationAsset.Succeeded())
+	{
+		BandageAnimation = BandageAnimationAsset.Object;
+	}
 
 	// 카메라의 기본 시야각을 DefaultFOV로 맞춰서 시작 (에디터에서 카메라에 직접 설정한 값과 어긋나지 않도록 주의)
 	FirstPersonCameraComponent->FieldOfView = DefaultFOV;
@@ -139,6 +149,17 @@ void AAPlayerCharacter::Tick(float DeltaTime)
 				GetCharacterMovement()->MaxWalkSpeed = BaseWalkSpeed;
 			}
 		}
+	}
+
+	// Restore the weapon when bandage use ends. Weapon switching owns the old weapon visibility.
+	if (BandageHiddenWeapon.IsValid() && (!HealingComponent || !HealingComponent->bIsUsingItem))
+	{
+		AWeaponBase* Weapon = BandageHiddenWeapon.Get();
+		if (CombatComponent && CombatComponent->EquippedWeapon == Weapon)
+		{
+			Weapon->SetActorHiddenInGame(bBandageWeaponWasHidden);
+		}
+		BandageHiddenWeapon.Reset();
 	}
 
 	// 회복 아이템 사용 중 이동속도 감소 처리
@@ -401,6 +422,11 @@ bool AAPlayerCharacter::IsSprinting() const
 
 void AAPlayerCharacter::DoFire()
 {
+	if (HealingComponent && HealingComponent->bIsUsingItem)
+	{
+		return;
+	}
+
 	// CombatComponent가 유효하면 발사 로직 위임
 	if (CombatComponent)
 	{
@@ -410,6 +436,11 @@ void AAPlayerCharacter::DoFire()
 
 void AAPlayerCharacter::DoReload()
 {
+	if (HealingComponent && HealingComponent->bIsUsingItem)
+	{
+		return;
+	}
+
 	// CombatComponent가 유효하면 재장전 로직 위임
 	if (CombatComponent)
 	{
@@ -422,7 +453,38 @@ void AAPlayerCharacter::DoUseBandage()
 	// HealingComponent가 유효하면 붕대 사용 로직 위임
 	if (HealingComponent)
 	{
+		const bool bWasUsingItem = HealingComponent->bIsUsingItem;
 		HealingComponent->UseBandage();
+		if (!bWasUsingItem && HealingComponent->bIsUsingItem && CombatComponent)
+		{
+			CombatComponent->StopAim();
+		}
+		if (!bWasUsingItem && HealingComponent->bIsUsingItem && FirstPersonMesh)
+		{
+			UAnimSequence* AnimationToPlay = BandageAnimation;
+			if (!AnimationToPlay)
+			{
+				AnimationToPlay = LoadObject<UAnimSequence>(
+					nullptr, TEXT("/Game/FirstPerson/Anims/AN_FP_Bandage_Wrap_3x.AN_FP_Bandage_Wrap_3x"));
+			}
+			if (AnimationToPlay && FirstPersonMesh->GetAnimInstance())
+			{
+				UAnimInstance* AnimInstance = FirstPersonMesh->GetAnimInstance();
+				const float PlayRate = AnimationToPlay->GetPlayLength() /
+					FMath::Max(HealingComponent->BandageUseDuration, 0.01f);
+				AnimInstance->PlaySlotAnimationAsDynamicMontage(
+					AnimationToPlay, FName(TEXT("DefaultSlot")), 0.1f, 0.15f, PlayRate);
+			}
+		}
+		if (!bWasUsingItem && HealingComponent->bIsUsingItem && CombatComponent)
+		{
+			if (AWeaponBase* Weapon = CombatComponent->EquippedWeapon)
+			{
+				BandageHiddenWeapon = Weapon;
+				bBandageWeaponWasHidden = Weapon->IsHidden();
+				Weapon->SetActorHiddenInGame(true);
+			}
+		}
 	}
 }
 
@@ -486,6 +548,11 @@ void AAPlayerCharacter::HandlePlayerDeath()
 
 void AAPlayerCharacter::DoAimStart()
 {
+	if (HealingComponent && HealingComponent->bIsUsingItem)
+	{
+		return;
+	}
+
 	// CombatComponent가 유효하면 조준 시작 로직 위임
 	if (CombatComponent)
 	{
@@ -504,6 +571,11 @@ void AAPlayerCharacter::DoAimEnd()
 
 void AAPlayerCharacter::DoSwitchWeapon1()
 {
+	if (HealingComponent && HealingComponent->bIsUsingItem)
+	{
+		return;
+	}
+
 	// CombatComponent가 유효하면 0번 슬롯(권총) 무기로 교체
 	if (CombatComponent)
 	{
@@ -513,6 +585,11 @@ void AAPlayerCharacter::DoSwitchWeapon1()
 
 void AAPlayerCharacter::DoSwitchWeapon2()
 {
+	if (HealingComponent && HealingComponent->bIsUsingItem)
+	{
+		return;
+	}
+
 	// CombatComponent가 유효하면 1번 슬롯(소총) 무기로 교체
 	if (CombatComponent)
 	{
@@ -522,6 +599,11 @@ void AAPlayerCharacter::DoSwitchWeapon2()
 
 void AAPlayerCharacter::DoSwitchWeapon3()
 {
+	if (HealingComponent && HealingComponent->bIsUsingItem)
+	{
+		return;
+	}
+
 	// CombatComponent가 유효하면 2번 슬롯(샷건) 무기로 교체
 	if (CombatComponent)
 	{
@@ -531,6 +613,11 @@ void AAPlayerCharacter::DoSwitchWeapon3()
 
 void AAPlayerCharacter::DoSwitchWeapon4()
 {
+	if (HealingComponent && HealingComponent->bIsUsingItem)
+	{
+		return;
+	}
+
 	// CombatComponent가 유효하면 3번 슬롯(스나이퍼) 무기로 교체
 	if (CombatComponent)
 	{
