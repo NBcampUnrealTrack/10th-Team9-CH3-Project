@@ -48,16 +48,21 @@ bool AEnemyAIController::IsTargetAlive() const
 	return StatsComponent->IsAlive();
 }
 
+void AEnemyAIController::OnPossess(APawn* InPawn)
+{
+	Super::OnPossess(InPawn);
+
+	//조종할 Enemy의 시작 위치와 방향 저장
+	if (InPawn)
+	{
+		StartLocation = InPawn->GetActorLocation();
+		StartRotation = InPawn->GetActorRotation();
+	}
+}
+
 void AEnemyAIController::BeginPlay()
 {
 	Super::BeginPlay();
-
-	//현재 Enemy의 시작 위치와 방향 저장
-	if (GetPawn())
-	{
-		StartLocation = GetPawn()->GetActorLocation();
-		StartRotation = GetPawn()->GetActorRotation();
-	}
 }
 
 bool AEnemyAIController::CanReachTarget(AActor* Actor) const

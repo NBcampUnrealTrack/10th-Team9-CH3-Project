@@ -88,6 +88,9 @@ protected:
 	UFUNCTION(BlueprintPure, Category = "AI|Target")
 	bool IsTargetAlive() const;
 
+	//Enemy를 조종하기 시작할 때 시작 위치 저장
+	virtual void OnPossess(APawn* InPawn) override;
+
 	virtual void BeginPlay() override;
 
 	//AI의 이동 요청이 성공하거나 실패하여 종료되었을 때 호출되는 함수

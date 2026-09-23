@@ -30,6 +30,9 @@ protected:
 	float SkillDamageInterval; //방사능 피해 간격
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Boss|Skill")
 	float SkillElapsedTime; //방사능 경과 시간
+	//방사능 스킬 생성 위치
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Boss|Skill")
+	FVector RadiationSkillLocation;
 
 	FTimerHandle RadiationDamageTimer; //방사능 피해 타이머
 };
