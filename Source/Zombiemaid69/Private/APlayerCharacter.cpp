@@ -8,6 +8,7 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "StatsComponent.h"
 #include "CombatComponent.h"
+#include "SkillComponent.h"
 #include "PerkComponent.h"
 #include "HealingComponent.h"
 #include "Kismet/GameplayStatics.h"
@@ -67,6 +68,9 @@ AAPlayerCharacter::AAPlayerCharacter()
 
 	// 전투(발사/재장전) 컴포넌트 생성
 	CombatComponent = CreateDefaultSubobject<UCombatComponent>(TEXT("CombatComponent"));
+
+	// 특수탄 스킬 컴포넌트 생성 및 부착
+	SkillComponent = CreateDefaultSubobject<USkillComponent>(TEXT("SkillComponent"));
 
 	// 레벨업 특전 컴포넌트 생성 및 부착
 	PerkComponent = CreateDefaultSubobject<UPerkComponent>(TEXT("PerkComponent"));
@@ -219,6 +223,14 @@ void AAPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 			ETriggerEvent::Started, 
 			this, 
 			&AAPlayerCharacter::DoReload
+		);
+
+		// E키를 누르면 DoActivateSpecialShot 호출
+		EnhancedInputComponent->BindAction(
+			SpecialShotAction,
+			ETriggerEvent::Started,
+			this,
+			&AAPlayerCharacter::DoActivateSpecialShot
 		);
 
 		// X키를 누르면 DoUseBandage 호출
@@ -530,6 +542,15 @@ void AAPlayerCharacter::DoSwitchWeapon4()
 	}
 }
 
+void AAPlayerCharacter::DoActivateSpecialShot()
+{
+	// SkillComponent가 유효하면 특수탄 발사 로직 위임
+	if (SkillComponent)
+	{
+		SkillComponent->ActivateSpecialShot();
+	}
+}
+
 // 레벨업 임시 테스트 함수 선언
 void AAPlayerCharacter::DebugAddExperience()
 {
@@ -562,6 +583,7 @@ void AAPlayerCharacter::DebugAddExperience()
 		UE_LOG(LogTemp, Error, TEXT("StatsComponent가 nullptr입니다!"));
 	}
 }
+
 // 동료 호출 입력 처리 함수 (윤민)
 void AAPlayerCharacter::DoRecallColleague()
 {

@@ -63,6 +63,10 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Input")
 	UInputAction* ReloadAction;
 
+	/** 특수탄 발사 Input Action (E키) */
+	UPROPERTY(EditAnywhere, Category = "Input")
+	UInputAction* SpecialShotAction;
+
 	/** 붕대 사용 Input Action (X키) */
 	UPROPERTY(EditAnywhere, Category = "Input")
 	UInputAction* UseBandageAction;
@@ -101,6 +105,10 @@ protected:
 	/** 전투(발사/재장전) 컴포넌트 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
 	class UCombatComponent* CombatComponent;
+
+	/** 특수탄 스킬을 관리하는 컴포넌트 */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
+	class USkillComponent* SkillComponent;
 
 	/** 회복 아이템(붕대/주사기)을 관리하는 컴포넌트 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
@@ -180,6 +188,10 @@ protected:
 	UFUNCTION(BlueprintCallable, Category = "Combat")
 	virtual void DoReload();
 
+	/** E키를 눌렀을 때 호출 (특수탄 발사) */
+	UFUNCTION(BlueprintCallable, Category = "Skill")
+	virtual void DoActivateSpecialShot();
+
 	/** X키를 눌렀을 때 호출 (붕대 사용) */
 	UFUNCTION(BlueprintCallable, Category = "Healing")
 	virtual void DoUseBandage();
@@ -245,6 +257,7 @@ public:
 	/** 다른 클래스(UI 등)에서 컴포넌트에 접근할 수 있도록 getter 제공 */
 	UStatsComponent* GetStatsComponent() const { return StatsComponent; }
 	UCombatComponent* GetCombatComponent() const { return CombatComponent; }
+	USkillComponent* GetSkillComponent() const { return SkillComponent; }
 	UPerkComponent* GetPerkComponent() const { return PerkComponent; }
 	UHealingComponent* GetHealingComponent() const { return HealingComponent; }
 
