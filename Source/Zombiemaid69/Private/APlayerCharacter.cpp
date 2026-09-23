@@ -9,6 +9,7 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "StatsComponent.h"
 #include "CombatComponent.h"
+#include "SkillComponent.h"
 #include "PerkComponent.h"
 #include "HealingComponent.h"
 #include "WeaponBase.h"
@@ -71,6 +72,9 @@ AAPlayerCharacter::AAPlayerCharacter()
 
 	// 전투(발사/재장전) 컴포넌트 생성
 	CombatComponent = CreateDefaultSubobject<UCombatComponent>(TEXT("CombatComponent"));
+
+	// 특수탄 스킬 컴포넌트 생성 및 부착
+	SkillComponent = CreateDefaultSubobject<USkillComponent>(TEXT("SkillComponent"));
 
 	// 레벨업 특전 컴포넌트 생성 및 부착
 	PerkComponent = CreateDefaultSubobject<UPerkComponent>(TEXT("PerkComponent"));
@@ -236,10 +240,18 @@ void AAPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 
 		// R키를 누르면 DoReload 호출
 		EnhancedInputComponent->BindAction(
-			ReloadAction, 
-			ETriggerEvent::Started, 
-			this, 
+			ReloadAction,
+			ETriggerEvent::Started,
+			this,
 			&AAPlayerCharacter::DoReload
+		);
+
+		// E키를 누르면 DoActivateSpecialShot 호출
+		EnhancedInputComponent->BindAction(
+			SpecialShotAction,
+			ETriggerEvent::Started,
+			this,
+			&AAPlayerCharacter::DoActivateSpecialShot
 		);
 
 		// X키를 누르면 DoUseBandage 호출
@@ -260,16 +272,16 @@ void AAPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 
 		// 우클릭을 누르면 DoAimStart 호출, 떼면 DoAimEnd 호출
 		EnhancedInputComponent->BindAction(
-			AimAction, 
-			ETriggerEvent::Started, 
+			AimAction,
+			ETriggerEvent::Started,
 			this,
 			&AAPlayerCharacter::DoAimStart
 		);
 
 		EnhancedInputComponent->BindAction(
-			AimAction, 
+			AimAction,
 			ETriggerEvent::Completed,
-			this, 
+			this,
 			&AAPlayerCharacter::DoAimEnd
 		);
 
@@ -465,7 +477,7 @@ void AAPlayerCharacter::DoUseBandage()
 			if (!AnimationToPlay)
 			{
 				AnimationToPlay = LoadObject<UAnimSequence>(
-					nullptr, TEXT("/Game/FirstPerson/Anims/AN_FP_Bandage_Wrap_3x.AN_FP_Bandage_Wrap_3x"));
+					nullptr, TEXT("/Game/FirstPerson/Anims/AN_FP_Bandage.AN_FP_Bandage"));
 			}
 			if (AnimationToPlay && FirstPersonMesh->GetAnimInstance())
 			{
@@ -622,6 +634,15 @@ void AAPlayerCharacter::DoSwitchWeapon4()
 	if (CombatComponent)
 	{
 		CombatComponent->SwitchWeapon(3);
+	}
+}
+
+void AAPlayerCharacter::DoActivateSpecialShot()
+{
+	// SkillComponent가 유효하면 특수탄 발사 로직 위임
+	if (SkillComponent)
+	{
+		SkillComponent->ActivateSpecialShot();
 	}
 }
 
