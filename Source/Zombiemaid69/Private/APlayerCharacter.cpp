@@ -225,6 +225,14 @@ void AAPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 			&AAPlayerCharacter::DoReload
 		);
 
+		// Q키를 누르면 DoThrowGrenade 호출
+		EnhancedInputComponent->BindAction(
+			ThrowGrenadeAction,
+			ETriggerEvent::Started,
+			this,
+			&AAPlayerCharacter::DoThrowGrenade
+		);
+
 		// E키를 누르면 DoActivateSpecialShot 호출
 		EnhancedInputComponent->BindAction(
 			SpecialShotAction,
@@ -539,6 +547,20 @@ void AAPlayerCharacter::DoSwitchWeapon4()
 	if (CombatComponent)
 	{
 		CombatComponent->SwitchWeapon(3);
+	}
+}
+
+void AAPlayerCharacter::DoThrowGrenade()
+{
+	UE_LOG(LogTemp, Warning, TEXT("DoThrowGrenade() 호출됨"));
+
+	if (SkillComponent)
+	{
+		SkillComponent->ThrowGrenade();
+	}
+	else
+	{
+		UE_LOG(LogTemp, Error, TEXT("DoThrowGrenade() 실패: SkillComponent가 nullptr입니다"));
 	}
 }
 
