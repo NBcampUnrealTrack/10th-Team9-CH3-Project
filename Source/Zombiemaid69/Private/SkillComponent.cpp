@@ -1,4 +1,6 @@
 ﻿#include "SkillComponent.h"
+#include "GrenadeProjectile.h"
+#include "GameFramework/ProjectileMovementComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "GameFramework/Character.h"
 #include "Camera/CameraComponent.h"
@@ -138,5 +140,98 @@ void USkillComponent::PerformSpecialShotTrace()
 		);
 
 		// TODO: 특수탄 피격 이펙트 재생 코드 추가 예정
+	}
+}
+
+void USkillComponent::ThrowGrenade()
+{
+	UE_LOG(LogTemp, Warning, TEXT("ThrowGrenade() 호출됨"));
+
+	// 아직 쿨타임 중이면 사용 불가
+	if (!bIsGrenadeReady)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("ThrowGrenade() 실패: 쿨타임 중"));
+		return;
+	}
+
+	// 스폰할 수류탄 클래스가 지정되지 않았다면 처리 불가
+	if (!GrenadeClass)
+	{
+		UE_LOG(LogTemp, Error, TEXT("ThrowGrenade() 실패: GrenadeClass가 nullptr입니다"));
+		return;
+	}
+
+	AActor* OwnerActor = GetOwner();
+	if (!OwnerActor)
+	{
+		return;
+	}
+
+	ACharacter* OwnerCharacter = Cast<ACharacter>(OwnerActor);
+	if (!OwnerCharacter)
+	{
+		return;
+	}
+
+	UCameraComponent* CameraComp = OwnerCharacter->FindComponentByClass<UCameraComponent>();
+	if (!CameraComp)
+	{
+		return;
+	}
+
+	// 카메라 위치에서 살짝 앞쪽 지점을 스폰 위치로 사용 (캐릭터 몸에 바로 부딪히지 않도록)
+	const FVector SpawnLocation = CameraComp->GetComponentLocation() + (CameraComp->GetForwardVector() * 50.0f);
+	const FRotator SpawnRotation = CameraComp->GetComponentRotation();
+
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.Owner = OwnerActor;
+	SpawnParams.Instigator = OwnerCharacter;
+	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+	AGrenadeProjectile* Grenade = GetWorld()->SpawnActor<AGrenadeProjectile>(GrenadeClass, SpawnLocation, SpawnRotation, SpawnParams);
+
+	if (Grenade)
+	{
+		// 카메라가 바라보는 방향으로 초기 속도를 부여해서 던져지는 효과 구현
+		Grenade->ProjectileMovement->Velocity = CameraComp->GetForwardVector() * GrenadeThrowSpeed;
+		UE_LOG(LogTemp, Warning, TEXT("수류탄 스폰 성공: 위치 %s, 속도 %s"), *SpawnLocation.ToString(), *Grenade->ProjectileMovement->Velocity.ToString());
+	}
+
+	else
+	{
+		UE_LOG(LogTemp, Error, TEXT("수류탄 스폰 실패"));
+	}
+
+	// TODO: 수류탄 던지는 팔 애니메이션(몽타주) 재생 코드 추가 예정
+
+	// 사용 시점 기록 및 쿨타임 시작
+	LastGrenadeTime = GetWorld()->GetTimeSeconds();
+	bIsGrenadeReady = false;
+	OnGrenadeReadyChanged.Broadcast(false);
+
+	GetWorld()->GetTimerManager().SetTimer(
+		GrenadeCooldownTimerHandle,
+		this,
+		&USkillComponent::UpdateGrenadeCooldownTick,
+		0.05f,
+		true
+	);
+}
+
+void USkillComponent::UpdateGrenadeCooldownTick()
+{
+	const float Elapsed = GetWorld()->GetTimeSeconds() - LastGrenadeTime;
+	const float RemainingTime = FMath::Max(0.0f, GrenadeCooldown - Elapsed);
+
+	OnGrenadeCooldownUpdated.Broadcast(RemainingTime, GrenadeCooldown);
+
+	if (RemainingTime <= 0.0f)
+	{
+		GetWorld()->GetTimerManager().ClearTimer(GrenadeCooldownTimerHandle);
+
+		bIsGrenadeReady = true;
+		OnGrenadeReadyChanged.Broadcast(true);
+
+		OnGrenadeCooldownUpdated.Broadcast(0.0f, GrenadeCooldown);
 	}
 }

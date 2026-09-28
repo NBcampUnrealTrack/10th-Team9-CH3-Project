@@ -67,6 +67,10 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Input")
 	UInputAction* ReloadAction;
 
+	/** 수류탄 던지기 Input Action (Q키) */
+	UPROPERTY(EditAnywhere, Category = "Input")
+	UInputAction* ThrowGrenadeAction;
+
 	/** 특수탄 발사 Input Action (E키) */
 	UPROPERTY(EditAnywhere, Category = "Input")
 	UInputAction* SpecialShotAction;
@@ -198,6 +202,10 @@ protected:
 	/** R키를 눌렀을 때 호출 (재장전) */
 	UFUNCTION(BlueprintCallable, Category = "Combat")
 	virtual void DoReload();
+
+	/** Q키를 눌렀을 때 호출 (수류탄 던지기) */
+	UFUNCTION(BlueprintCallable, Category = "Skill")
+	virtual void DoThrowGrenade();
 
 	/** E키를 눌렀을 때 호출 (특수탄 발사) */
 	UFUNCTION(BlueprintCallable, Category = "Skill")
