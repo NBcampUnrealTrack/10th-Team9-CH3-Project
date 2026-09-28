@@ -1,4 +1,5 @@
 ﻿#include "BossMother.h"
+#include "BossEnemyAIController.h"
 #include "AIController.h"
 #include "NavigationSystem.h"
 
@@ -89,6 +90,22 @@ void ABossMother::Awaken()
 		CurrentHealth,
 		AttackDamage
 	);
+}
+
+void ABossMother::OnAwakenEnd()
+{
+	//현재 Boss AIController 가져오기
+	ABossEnemyAIController* AIController =
+		Cast<ABossEnemyAIController>(GetController());
+	if (!AIController)
+	{
+		return;
+	}
+	//Alert 중 각성했다면 정상적으로 Chase 진행
+	if (AIController->GetCurrentState() == EEnemyAIState::Alert)
+	{
+		AIController->OnEnemyAlertEnd();
+	}
 }
 
 void ABossMother::OnSkillHit()

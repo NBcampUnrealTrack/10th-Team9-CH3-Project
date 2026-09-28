@@ -123,10 +123,17 @@ void AEnemyAIController::OnEnemyAlertEnd()
 
 		//현재 Enemy를 가져옴
 		AEnemy* Enemy = Cast<AEnemy>(GetPawn());
-		if (Enemy && Enemy->ReturnMontage)
+		if (Enemy)
 		{
-			Enemy->PlayAnimMontage(Enemy->ReturnMontage);
+			//Return 상태에서는 반복 사운드 정지
+			Enemy->StopLoopSound();
+
+			if (Enemy->ReturnMontage)
+			{
+				Enemy->PlayAnimMontage(Enemy->ReturnMontage);
+			}
 		}
+
 		//시작 위치로 복귀
 		MoveToLocation(StartLocation);
 		return;
@@ -137,14 +144,14 @@ void AEnemyAIController::OnEnemyAlertEnd()
 	{
 		return;
 	}
-	//현재 타겟과의 거리계산
-	float DistanceToTarget = FVector::Dist(
-		Enemy->GetActorLocation(),
-		TargetActor->GetActorLocation()
-	);
-	//공격 거리 밖이면 다시 추적
+	//Chase 상태로 변경
 	CurrentState = EEnemyAIState::Chase;
-	if (Enemy && Enemy->ChaseMontage)
+
+	//Chase 반복 사운드 재생
+	Enemy->PlayChaseSound();
+
+	//Chase 애니메이션 재생
+	if (Enemy->ChaseMontage)
 	{
 		Enemy->PlayAnimMontage(Enemy->ChaseMontage);
 	}
@@ -159,7 +166,6 @@ void AEnemyAIController::OnEnemyAlertEnd()
 		true
 	);
 }
-
 void AEnemyAIController::OnEnemyAttackEnd()
 {
 	//Attack 상태가 아니면 처리하지 않음
@@ -167,13 +173,11 @@ void AEnemyAIController::OnEnemyAttackEnd()
 	{
 		return;
 	}
-
 	//공격 대상이 없으면 처리하지 않음
 	if (!TargetActor)
 	{
 		return;
 	}
-
 	//현재 타겟 생존 상태 확인
 	const bool bTargetAlive = IsTargetAlive();
 
@@ -185,22 +189,26 @@ void AEnemyAIController::OnEnemyAttackEnd()
 
 		//현재 Enemy를 가져옴
 		AEnemy* Enemy = Cast<AEnemy>(GetPawn());
-		if (Enemy && Enemy->ReturnMontage)
+		if (Enemy)
 		{
-			Enemy->PlayAnimMontage(Enemy->ReturnMontage);
+			//Return 상태에서는 반복 사운드 정지
+			Enemy->StopLoopSound();
+
+			if (Enemy->ReturnMontage)
+			{
+				Enemy->PlayAnimMontage(Enemy->ReturnMontage);
+			}
 		}
 		//시작 위치로 복귀
 		MoveToLocation(StartLocation);
 		return;
 	}
-
 	//현재 Enemy를 가져옴
 	AEnemy* Enemy = Cast<AEnemy>(GetPawn());
 	if (!Enemy)
 	{
 		return;
 	}
-
 	//현재 타겟과의 거리 계산
 	float DistanceToTarget = FVector::Dist(
 		Enemy->GetActorLocation(),
@@ -216,15 +224,18 @@ void AEnemyAIController::OnEnemyAttackEnd()
 		}
 		return;
 	}
-
 	//공격 거리 밖이면 다시 추적
 	CurrentState = EEnemyAIState::Chase;
 
+	//Chase 반복 사운드 재생
+	Enemy->PlayChaseSound();
+
+	//Chase 애니메이션 재생
 	if (Enemy->ChaseMontage)
 	{
 		Enemy->PlayAnimMontage(Enemy->ChaseMontage);
 	}
-
+	//공격 대상 다시 추적
 	MoveToActor(
 		TargetActor,
 		-1.0f,
@@ -301,15 +312,25 @@ void AEnemyAIController::OnEnemyDead()
 	{
 		return;
 	}
-
 	//Dead 상태로 변경
 	CurrentState = EEnemyAIState::Dead;
+
 	//현재 상태 초기화
 	TargetActor = nullptr;
+
 	//경직 상태에서 해제
 	bIsStunned = false;
+
 	//이동 중지
 	StopMovement();
+
+	//현재 Enemy 가져오기
+	AEnemy* Enemy = Cast<AEnemy>(GetPawn());
+	if (Enemy)
+	{
+		//사망 시 모든 반복 사운드 정지
+		Enemy->StopLoopSound();
+	}
 }
 
 void AEnemyAIController::OnEnemyDamaged(AActor* Attacker)
@@ -345,12 +366,6 @@ void AEnemyAIController::OnEnemyDamaged(AActor* Attacker)
 	//현재 Enemy 가져오기
 	AEnemy* Enemy = Cast<AEnemy>(GetPawn());
 
-	//피격으로 전투가 시작되면 Idle 사운드 정지
-	if (Enemy)
-	{
-		Enemy->StopIdelSound();
-	}
-
 	//공격 중에는 현재 공격을 유지
 	if (CurrentState == EEnemyAIState::Attack)
 	{
@@ -375,6 +390,11 @@ void AEnemyAIController::OnEnemyDamaged(AActor* Attacker)
 	//추적 상태로 변경
 	CurrentState = EEnemyAIState::Chase;
 
+	//Chase 반복 사운드 재생
+	if (Enemy)
+	{
+		Enemy->PlayChaseSound();
+	}
 	//Chase 애니메이션 재생
 	if (Enemy && Enemy->ChaseMontage)
 	{
@@ -436,16 +456,17 @@ void AEnemyAIController::OnTargetDetected(AActor* DetectedActor)
 	CurrentState = EEnemyAIState::Alert;
 	StopMovement();
 
+	//현재 Enemy 가져오기
 	AEnemy* Enemy = Cast<AEnemy>(GetPawn());
 	if (!Enemy)
 	{
 		return;
 	}
-	//Idle 반복 사운드 정지
-	Enemy->StopIdelSound();
+	//Alert 상태에서는 반복 사운드 정지
+	Enemy->StopLoopSound();
 
 	//Alert 애니메이션 재생
-	if (Enemy && Enemy->AlertMontage)
+	if (Enemy->AlertMontage)
 	{
 		Enemy->PlayAnimMontage(Enemy->AlertMontage);
 	}
@@ -618,14 +639,17 @@ void AEnemyAIController::Tick(float DeltaTime)
 		//Return 상태로 변경
 		CurrentState = EEnemyAIState::Return;
 
+		//Return 상태에서는 반복 사운드 정지
+		Enemy->StopLoopSound();
+
 		//Return 애니메이션 재생
 		if (Enemy->ReturnMontage)
 		{
 			Enemy->PlayAnimMontage(Enemy->ReturnMontage);
 		}
-		// 시작 위치로 복귀
-		MoveToLocation(StartLocation);
 
+		//시작 위치로 복귀
+		MoveToLocation(StartLocation);
 		return;
 	}
 	//플레이어와의 거리 계산
@@ -640,6 +664,9 @@ void AEnemyAIController::Tick(float DeltaTime)
 
 		StopMovement();
 
+		//Attack 상태에서는 반복 사운드 정지
+		Enemy->StopLoopSound();
+
 		//Attack 애니메이션 재생
 		if (Enemy->AttackMontage)
 		{
@@ -649,7 +676,8 @@ void AEnemyAIController::Tick(float DeltaTime)
 		return;
 	}
 	//Enemy 위치에서 플레이어 위치를 향하는 방향을 계산
-	FVector Direction = TargetActor->GetActorLocation() - ControlledPawn->GetActorLocation();
+	FVector Direction =
+		TargetActor->GetActorLocation() - ControlledPawn->GetActorLocation();
 
 	//위아래 방향은 회전에 사용하지 않도록 제거
 	Direction.Z = 0.0f;
@@ -659,8 +687,9 @@ void AEnemyAIController::Tick(float DeltaTime)
 	{
 		return;
 	}
-	//플레이어 방향을 바라보는 회전값을 계싼
+	//플레이어 방향을 바라보는 회전값을 계산
 	FRotator TargetRotation = Direction.Rotation();
+
 	//Enemy가 플레이어 방향을 바라보도록 회전
 	ControlledPawn->SetActorRotation(TargetRotation);
 }
