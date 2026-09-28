@@ -25,14 +25,17 @@ void UPerkComponent::BeginPlay()
 	CachedStatsComponent = OwnerActor->FindComponentByClass<UStatsComponent>();
 	CachedCombatComponent = OwnerActor->FindComponentByClass<UCombatComponent>();
 
-	// StatsComponent가 존재하면, 레벨업 이벤트를 구독
+	// StatsComponent가 존재하면, 레벨업 이벤트를 구독 -> 수정(윤민) AddDynamic 충돌로 인해 AddUniqueDynamic로 변경
 	if (CachedStatsComponent)
 	{
-		CachedStatsComponent->OnLevelUp.AddDynamic(this, &UPerkComponent::HandleLevelUp);
+		CachedStatsComponent->OnLevelUp.AddUniqueDynamic(
+			this,
+			&UPerkComponent::HandleLevelUp
+		);
 	}
 	else
 	{
-		// StatsComponent가 없으면 특전 시스템 자체가 동작할 수 없으므로 경고 로그
+		// StatsComponent가 없으면 특전 시스템 자체가 동작할 수 없으므로 경고 로그 ㅜ
 		UE_LOG(LogTemp, Warning, TEXT("PerkComponent: StatsComponent를 찾을 수 없습니다. 같은 액터에 부착되어 있는지 확인하세요."));
 	}
 }

@@ -8,6 +8,7 @@
 class UInputComponent;
 class USkeletalMeshComponent;
 class UCameraComponent;
+class USpotLightComponent;
 class UInputAction;
 struct FInputActionValue;
 // 레벨업 로직
@@ -27,6 +28,10 @@ class ZOMBIEMAID69_API AAPlayerCharacter : public ACharacter
 	/** 1인칭 카메라 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
 	UCameraComponent* FirstPersonCameraComponent;
+
+	/** 카메라를 따라가는 손전등. 세부조정은 BP에서 조정 */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
+	USpotLightComponent* Flashlight;
 
 protected:
 
@@ -62,6 +67,10 @@ protected:
 	/** 재장전 Input Action (R키) */
 	UPROPERTY(EditAnywhere, Category = "Input")
 	UInputAction* ReloadAction;
+
+	/** 손전등 토글 입력. BP에서 기존 IA_Flashlight를 지정 (F키 사용) */
+	UPROPERTY(EditDefaultsOnly, Category = "Input")
+	UInputAction* FlashlightAction = nullptr;
 
 	/** 붕대 사용 Input Action (X키) */
 	UPROPERTY(EditAnywhere, Category = "Input")
@@ -180,6 +189,10 @@ protected:
 	UFUNCTION(BlueprintCallable, Category = "Combat")
 	virtual void DoReload();
 
+	/** F키를 누를 때 한 번만 손전등 상태 전환 */
+	UFUNCTION(BlueprintCallable, Category = "Flashlight")
+	virtual void DoToggleFlashlight();
+
 	/** X키를 눌렀을 때 호출 (붕대 사용) */
 	UFUNCTION(BlueprintCallable, Category = "Healing")
 	virtual void DoUseBandage();
@@ -241,6 +254,10 @@ public:
 
 	/** 1인칭 카메라 컨포넌트 반환 */
 	UCameraComponent* GetFirstPersonCameraComponent() const { return FirstPersonCameraComponent; }
+
+	/** 현재 손전등 점등 상태 */
+	UFUNCTION(BlueprintPure, Category = "Flashlight")
+	bool IsFlashlightOn() const;
 
 	/** 다른 클래스(UI 등)에서 컴포넌트에 접근할 수 있도록 getter 제공 */
 	UStatsComponent* GetStatsComponent() const { return StatsComponent; }

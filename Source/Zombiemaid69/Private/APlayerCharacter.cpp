@@ -3,6 +3,7 @@
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "Components/SpotLightComponent.h"
 #include "EnhancedInputComponent.h"
 #include "InputActionValue.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -34,6 +35,20 @@ AAPlayerCharacter::AAPlayerCharacter()
 
 	// 마우스 상하좌우 회전을 카메라에 적용
 	FirstPersonCameraComponent->bUsePawnControlRotation = true;
+
+	// 무기와 독립적으로 카메라를 따라가므로 무기를 바꿔도 점등 상태 유지 -윤민-
+	Flashlight = CreateDefaultSubobject<USpotLightComponent>(TEXT("Flashlight"));
+	Flashlight->SetupAttachment(FirstPersonCameraComponent);
+	Flashlight->SetMobility(EComponentMobility::Movable);
+	Flashlight->SetRelativeLocation(FVector(10.0f, 0.0f, 0.0f));
+	Flashlight->SetRelativeRotation(FRotator::ZeroRotator);
+	Flashlight->SetIntensityUnits(ELightUnits::Lumens);
+	Flashlight->SetIntensity(1500.0f);
+	Flashlight->SetAttenuationRadius(2000.0f);
+	Flashlight->SetInnerConeAngle(12.0f);
+	Flashlight->SetOuterConeAngle(25.0f);
+	Flashlight->SetCastShadows(true);
+	Flashlight->SetVisibility(false);
 
 	// 본인에게만 보이는 1인칭 메시 생성
 	FirstPersonMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("First Person Mesh"));
@@ -81,6 +96,12 @@ AAPlayerCharacter::AAPlayerCharacter()
 void AAPlayerCharacter::BeginPlay()
 {
 	Super::BeginPlay();
+
+	// 에디터 미리보기 설정과 무관하게 플레이 시작 시에는 소등
+	if (Flashlight)
+	{
+		Flashlight->SetVisibility(false);
+	}
 
 	// 플레이어가 사망했을 때 HandlePlayerDeath()가 자동 호출되도록 델리게이트 구독
 	if (StatsComponent)
@@ -220,6 +241,21 @@ void AAPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 			this, 
 			&AAPlayerCharacter::DoReload
 		);
+
+		// Started에만 연결해 F키를 누르고 있는 동안 반복 토글되지 않게 처리
+		if (FlashlightAction)
+		{
+			EnhancedInputComponent->BindAction(
+				FlashlightAction,
+				ETriggerEvent::Started,
+				this,
+				&AAPlayerCharacter::DoToggleFlashlight
+			);
+		}
+		else
+		{
+			UE_LOG(LogZombiemaid69, Warning, TEXT("FlashlightAction is not assigned. Set IA_Flashlight in the player Blueprint."));
+		}
 
 		// X키를 누르면 DoUseBandage 호출
 		EnhancedInputComponent->BindAction(
@@ -409,6 +445,21 @@ void AAPlayerCharacter::DoReload()
 	}
 }
 
+void AAPlayerCharacter::DoToggleFlashlight()
+{
+	if (!Flashlight || GetNetMode() == NM_DedicatedServer || (StatsComponent && StatsComponent->bIsDead))
+	{
+		return;
+	}
+
+	Flashlight->SetVisibility(!Flashlight->IsVisible());
+}
+
+bool AAPlayerCharacter::IsFlashlightOn() const
+{
+	return Flashlight && Flashlight->IsVisible();
+}
+
 void AAPlayerCharacter::DoUseBandage()
 {
 	// HealingComponent가 유효하면 붕대 사용 로직 위임
@@ -449,6 +500,10 @@ float AAPlayerCharacter::TakeDamage(
 void AAPlayerCharacter::HandlePlayerDeath()
 {
 	// 플레이어가 죽었을 때의 처리
+	if (Flashlight)
+	{
+		Flashlight->SetVisibility(false);
+	}
 
 	//현재 게임모드를 가져옴
 	ALastCureGameMode* GM = Cast<ALastCureGameMode>(
