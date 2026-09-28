@@ -83,6 +83,7 @@ public:
 	/** 특정 슬롯 번호(0~3)의 무기로 교체하는 함수 */
 	UFUNCTION(BlueprintCallable, Category = "Combat")
 	void SwitchWeapon(int32 SlotIndex);
+	int32 GetCurrentWeaponSlotIndex() const { return CurrentWeaponSlotIndex; }
 
 	/** 조준 시작  */
 	UFUNCTION(BlueprintCallable, Category = "Combat")

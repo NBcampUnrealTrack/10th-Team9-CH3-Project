@@ -249,6 +249,10 @@ void AAPlayerCharacter::Tick(float DeltaTime)
 		}
 		BandageHiddenWeapon.Reset();
 	}
+	if (WeaponSlotBeforeHealing >= 0 && (!HealingComponent || !HealingComponent->bIsUsingItem))
+	{
+		RestoreWeaponAfterHealing();
+	}
 	if (bShowingSyringeAnimation && (!HealingComponent || !HealingComponent->bIsUsingItem))
 	{
 		bShowingSyringeAnimation = false;
@@ -589,6 +593,37 @@ bool AAPlayerCharacter::IsFlashlightOn() const
 	return Flashlight && Flashlight->IsVisible();
 }
 
+void AAPlayerCharacter::PrepareWeaponForHealing()
+{
+	if (!CombatComponent || WeaponSlotBeforeHealing >= 0)
+	{
+		return;
+	}
+
+	const int32 PreviousSlot = CombatComponent->GetCurrentWeaponSlotIndex();
+	if (PreviousSlot <= 0 || !CombatComponent->WeaponClasses.IsValidIndex(0) ||
+		!CombatComponent->WeaponClasses[0])
+	{
+		return;
+	}
+
+	CombatComponent->SwitchWeapon(0);
+	if (CombatComponent->GetCurrentWeaponSlotIndex() == 0 && CombatComponent->EquippedWeapon)
+	{
+		WeaponSlotBeforeHealing = PreviousSlot;
+	}
+}
+
+void AAPlayerCharacter::RestoreWeaponAfterHealing()
+{
+	const int32 PreviousSlot = WeaponSlotBeforeHealing;
+	WeaponSlotBeforeHealing = -1;
+	if (CombatComponent && PreviousSlot >= 0)
+	{
+		CombatComponent->SwitchWeapon(PreviousSlot);
+	}
+}
+
 void AAPlayerCharacter::DoUseBandage()
 {
 	// HealingComponent가 유효하면 붕대 사용 로직 위임
@@ -599,6 +634,7 @@ void AAPlayerCharacter::DoUseBandage()
 		if (!bWasUsingItem && HealingComponent->bIsUsingItem && CombatComponent)
 		{
 			CombatComponent->StopAim();
+			PrepareWeaponForHealing();
 		}
 		if (!bWasUsingItem && HealingComponent->bIsUsingItem && FirstPersonMesh)
 		{
@@ -646,6 +682,7 @@ void AAPlayerCharacter::DoUseSyringe()
 	if (CombatComponent)
 	{
 		CombatComponent->StopAim();
+		PrepareWeaponForHealing();
 
 		if (AWeaponBase* Weapon = CombatComponent->EquippedWeapon)
 		{

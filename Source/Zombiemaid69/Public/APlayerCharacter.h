@@ -39,6 +39,9 @@ class ZOMBIEMAID69_API AAPlayerCharacter : public ACharacter
 
 	TWeakObjectPtr<class AWeaponBase> BandageHiddenWeapon;
 	bool bBandageWeaponWasHidden = false;
+	int32 WeaponSlotBeforeHealing = -1;
+	void PrepareWeaponForHealing();
+	void RestoreWeaponAfterHealing();
 
 	/** 1인칭 카메라 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
