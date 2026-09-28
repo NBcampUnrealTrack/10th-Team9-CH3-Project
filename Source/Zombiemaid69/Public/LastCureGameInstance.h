@@ -4,12 +4,21 @@
 #include "Engine/GameInstance.h"
 #include "LastCureGameInstance.generated.h"
 
+// 일반 혈청 수량이 변경됐을 때 UI에 알려주는 이벤트
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnSerumChanged);
+
 UCLASS()
 class ZOMBIEMAID69_API ULastCureGameInstance : public UGameInstance
 {
 	GENERATED_BODY()
 	
 public:
+
+	// 일반 혈청 변경 알림
+	// 블루프린트에서 이 이벤트에 UpdateSerumHUD를 연결
+	UPROPERTY(BlueprintAssignable, Category = "Resources|Serum")
+	FOnSerumChanged OnSerumChanged;
+
 	//외부에서 원종혈청 추가할 때 호출할 함수(Serum: 혈청)
 	UFUNCTION(BlueprintCallable, Category = "Progress")
 	void AddOriginSerum(int32 Amount);
