@@ -17,12 +17,10 @@ AEnemy::AEnemy()
 {
 	PrimaryActorTick.bCanEverTick = false;
 
-	// Enemy를 조종할 AIController 클래스 지정
+	//Enemy를 조종할 AIController 클래스 지정
 	AIControllerClass = AEnemyAIController::StaticClass();
-
-	// AIController가 자동으로 Enemy를 조종하도록 설정
+	//AIController가 자동으로 Enemy를 조종하도록 설정
 	AutoPossessAI = EAutoPossessAI::PlacedInWorldOrSpawned;
-
 	//총기 Visibility Trace가 Enemy를 피격할 수 있도록 설정
 	GetCapsuleComponent()->SetCollisionResponseToChannel(
 		ECC_Visibility,
@@ -59,46 +57,60 @@ AEnemy::AEnemy()
 	DetectionSphere->SetCollisionResponseToAllChannels(ECR_Ignore);
 	//Pawn만 감지
 	DetectionSphere->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
-	//OverLap 이벤트 활성화
+	//Overlap 이벤트 활성화
 	DetectionSphere->SetGenerateOverlapEvents(true);
 
-	//Idle 반복 사운드 Component 생성
-	IdleAudioComponent = CreateDefaultSubobject<UAudioComponent>(TEXT("IdleAudioComponent"));
+	//반복 사운드 Component 생성
+	LoopAudioComponent = CreateDefaultSubobject<UAudioComponent>(TEXT("LoopAudioComponent"));
 	//Enemy에 Audio Component 부착
-	IdleAudioComponent->SetupAttachment(GetRootComponent());
+	LoopAudioComponent->SetupAttachment(GetRootComponent());
 	//게임 시작 시 자동 재생하지 않음
-	IdleAudioComponent->bAutoActivate = false;
+	LoopAudioComponent->bAutoActivate = false;
 
-	//Idle 사운드 초기화
+	//사운드 초기화
 	IdleSound = nullptr;
+	ChaseSound = nullptr;
+	HitSound = nullptr;
 }
 
 void AEnemy::PlayIdleSound()
 {
-	//사운드가 없으면 재생하지 않음
-	if (!IdleAudioComponent || !IdleSound)
+	//Idle 사운드가 없으면 재생하지 않음
+	if (!LoopAudioComponent || !IdleSound)
 	{
 		return;
 	}
+	//현재 반복 사운드 정지
+	LoopAudioComponent->Stop();
 	//Idle 사운드 설정
-	IdleAudioComponent->SetSound(IdleSound);
-
-	//이미 재생 중이면 다시 재생하지 않음
-	if (!IdleAudioComponent->IsPlaying())
+	LoopAudioComponent->SetSound(IdleSound);
+	//Idle 반복 사운드 재생
+	LoopAudioComponent->Play();
+}
+void AEnemy::PlayChaseSound()
+{
+	//Chase 사운드가 없으면 재생하지 않음
+	if (!LoopAudioComponent || !ChaseSound)
 	{
-		IdleAudioComponent->Play();
+		return;
 	}
+	//현재 반복 사운드 정지
+	LoopAudioComponent->Stop();
+	//Chase 사운드 설정
+	LoopAudioComponent->SetSound(ChaseSound);
+	//Chase 반복 사운드 재생
+	LoopAudioComponent->Play();
 }
 
-void AEnemy::StopIdelSound()
+void AEnemy::StopLoopSound()
 {
 	//Audio Component가 없으면 처리하지 않음
-	if (!IdleAudioComponent)
+	if (!LoopAudioComponent)
 	{
 		return;
 	}
-	//Idle 사운드 정지
-	IdleAudioComponent->Stop();
+	//현재 반복 사운드 정지
+	LoopAudioComponent->Stop();
 }
 
 void AEnemy::BeginPlay()
@@ -193,6 +205,15 @@ float AEnemy::TakeDamage(
 	//실제로 받은 데미지 표시
 	ShowDamageNumber(HealthLost);
 
+	//피겨 위치에서 Hit 사운드 재생
+	if (HitSound)
+	{
+		UGameplayStatics::PlaySoundAtLocation(
+			this,
+			HitSound,
+			GetActorLocation()
+		);
+	}
 	// 치명타도 알림 보내고 사망처리
 	OnHealthChanged.Broadcast(
 		this,
