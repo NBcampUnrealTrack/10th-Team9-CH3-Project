@@ -342,6 +342,15 @@ void AEnemyAIController::OnEnemyDamaged(AActor* Attacker)
 	//공격자를 추적 대상으로 지정
 	TargetActor = Attacker;
 
+	//현재 Enemy 가져오기
+	AEnemy* Enemy = Cast<AEnemy>(GetPawn());
+
+	//피격으로 전투가 시작되면 Idle 사운드 정지
+	if (Enemy)
+	{
+		Enemy->StopIdelSound();
+	}
+
 	//공격 중에는 현재 공격을 유지
 	if (CurrentState == EEnemyAIState::Attack)
 	{
@@ -367,7 +376,6 @@ void AEnemyAIController::OnEnemyDamaged(AActor* Attacker)
 	CurrentState = EEnemyAIState::Chase;
 
 	//Chase 애니메이션 재생
-	AEnemy* Enemy = Cast<AEnemy>(GetPawn());
 	if (Enemy && Enemy->ChaseMontage)
 	{
 		Enemy->PlayAnimMontage(Enemy->ChaseMontage);
@@ -428,8 +436,15 @@ void AEnemyAIController::OnTargetDetected(AActor* DetectedActor)
 	CurrentState = EEnemyAIState::Alert;
 	StopMovement();
 
-	//Alert 애니메이션 재생
 	AEnemy* Enemy = Cast<AEnemy>(GetPawn());
+	if (!Enemy)
+	{
+		return;
+	}
+	//Idle 반복 사운드 정지
+	Enemy->StopIdelSound();
+
+	//Alert 애니메이션 재생
 	if (Enemy && Enemy->AlertMontage)
 	{
 		Enemy->PlayAnimMontage(Enemy->AlertMontage);
@@ -518,6 +533,9 @@ void AEnemyAIController::OnMoveCompleted(
 				{
 					Enemy->PlayAnimMontage(Enemy->IdleMontage);
 				}
+				//Idle 반복 사운드 재생
+				Enemy->PlayIdleSound();
+
 				//감지 범위 안의 대상 다시 확인
 				Enemy->CheckDetectionTargets();
 			}
