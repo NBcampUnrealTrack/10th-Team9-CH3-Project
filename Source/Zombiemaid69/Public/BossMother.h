@@ -23,7 +23,9 @@ public:
 	//2페이즈 각성
 	UFUNCTION(BlueprintCallable, Category = "Boss|Awaken")
 	void Awaken();
-
+	//각성 애니메이션 종료 처리
+	UFUNCTION(BlueprintCallable, Category = "Boss|Awaken")
+	void OnAwakenEnd();
 	//좀비 소환
 	UFUNCTION(BlueprintCallable, Category = "Boss|Skill")
 	void OnSkillHit();

@@ -2,13 +2,15 @@
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "Components/CapsuleComponent.h"
+#include "NiagaraFunctionLibrary.h"
+#include "NiagaraSystem.h"
 
 ABossTree::ABossTree()
 {
 	//기본 스탯
 	MaxHealth = 1200.0f;
 	AttackDamage = 25.0f;
-	
+
 	//보스 처치 보상
 	SerumReward = 80;
 	OriginSerumReward = 1;
@@ -18,10 +20,34 @@ ABossTree::ABossTree()
 	SkillDamage = 30.0f;
 	SkillRange = 300.0f;
 	SkillDodgeHeight = 50.0f;
+
+	//내려찍기 이펙트 설정
+	SkillImpactEffect = nullptr;
+	SkillImpactScale = 3.0f;
 }
 
 void ABossTree::OnSkillHit()
 {
+	//내려찍기 위치에 충격파 이펙트 생성
+	if (SkillImpactEffect)
+	{
+		//보스 캡슐의 바닥 위치 계산
+		const FVector ImpactLocation =
+			GetCapsuleComponent()->GetComponentLocation() -
+			FVector(
+				0.0f,
+				0.0f,
+				GetCapsuleComponent()->GetScaledCapsuleHalfHeight()
+			);
+
+		UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+			GetWorld(),
+			SkillImpactEffect,
+			ImpactLocation,
+			FRotator::ZeroRotator,
+			FVector(SkillImpactScale)
+		);
+	}
 	TArray<FHitResult> HitResults; //광역 판정 결과
 
 	TSet<AActor*> DamagedActors; //이미 데미지를 받은 대상
@@ -75,7 +101,7 @@ void ABossTree::OnSkillHit()
 
 		if (TargetCapsule)
 		{
-			//대상의 보스의 캡슐 바닥 높이 계산
+			//대상과 보스의 캡슐 바닥 높이 계산
 			const float TargetBottomZ =
 				TargetCapsule->GetComponentLocation().Z -
 				TargetCapsule->GetScaledCapsuleHalfHeight();
@@ -90,7 +116,8 @@ void ABossTree::OnSkillHit()
 				continue;
 			}
 		}
-		DamagedActors.Add(HitActor); //데미지를 받은 대상으로 등록
+		//데미지를 받은 대상으로 등록
+		DamagedActors.Add(HitActor);
 
 		//스킬 데미지 적용
 		UGameplayStatics::ApplyDamage(

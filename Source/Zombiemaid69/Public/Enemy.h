@@ -110,11 +110,15 @@ public:
 	TObjectPtr<UAnimMontage> DeadMontage; //사망 애니메이션
 
 	//사운드
+	//Idle 반복 사운드 재생
 	UFUNCTION(BlueprintCallable, Category = "Enemy|Sound")
 	void PlayIdleSound();
-	//Idle 사운드 정지
+	//Chase 반복 사운드 재생
 	UFUNCTION(BlueprintCallable, Category = "Enemy|Sound")
-	void StopIdelSound();
+	void PlayChaseSound();
+	//반복 사운드 정지
+	UFUNCTION(BlueprintCallable, Category = "Enemy|Sound")
+	void StopLoopSound();
 
 protected:
 	//스탯
@@ -157,13 +161,18 @@ protected:
 	TSubclassOf<AActor> DamageNumberClass;
 
 	//사운드
-	//Idle 반복 사운드 Component
+	//반복 사운드 Component
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Enemy|Sound")
-	TObjectPtr<UAudioComponent> IdleAudioComponent;
+	TObjectPtr<UAudioComponent> LoopAudioComponent;
 	//Idle 반복 사운드
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy|Sound")
 	TObjectPtr<USoundBase> IdleSound;
-	//Idle 사운드 재생
+	//Chase 반복 사운드
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy|Sound")
+	TObjectPtr<USoundBase> ChaseSound;
+	//피격 사운드
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy|Sound")
+	TObjectPtr<USoundBase> HitSound;
 
 	virtual void BeginPlay() override;
 
