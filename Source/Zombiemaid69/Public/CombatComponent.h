@@ -127,6 +127,7 @@ private:
 	/** 재장전 완료 시점에 호출될 타이머 핸들 */
 	FTimerHandle ReloadTimerHandle;
 	TWeakObjectPtr<AWeaponBase> ReloadingWeapon;
+	uint64 ReloadRequestId = 0;
 
 	/** 실제 라인트레이스를 수행해서 대상을 맞추고 데미지를 적용하는 내부 함수 */
 	void PerformHitTrace();
