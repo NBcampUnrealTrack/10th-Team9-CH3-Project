@@ -6,12 +6,9 @@
 #include "Kismet/GameplayStatics.h"
 #include "Components/SphereComponent.h"
 #include "Components/CapsuleComponent.h"
-#include "Components/AudioComponent.h"
-#include "Sound/SoundBase.h"
 #include "TimerManager.h"
 #include "LastCureGameMode.h"
 #include "LastCureGameInstance.h"
-
 
 AEnemy::AEnemy()
 {
@@ -61,44 +58,6 @@ AEnemy::AEnemy()
 	DetectionSphere->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
 	//OverLap 이벤트 활성화
 	DetectionSphere->SetGenerateOverlapEvents(true);
-
-	//Idle 반복 사운드 Component 생성
-	IdleAudioComponent = CreateDefaultSubobject<UAudioComponent>(TEXT("IdleAudioComponent"));
-	//Enemy에 Audio Component 부착
-	IdleAudioComponent->SetupAttachment(GetRootComponent());
-	//게임 시작 시 자동 재생하지 않음
-	IdleAudioComponent->bAutoActivate = false;
-
-	//Idle 사운드 초기화
-	IdleSound = nullptr;
-}
-
-void AEnemy::PlayIdleSound()
-{
-	//사운드가 없으면 재생하지 않음
-	if (!IdleAudioComponent || !IdleSound)
-	{
-		return;
-	}
-	//Idle 사운드 설정
-	IdleAudioComponent->SetSound(IdleSound);
-
-	//이미 재생 중이면 다시 재생하지 않음
-	if (!IdleAudioComponent->IsPlaying())
-	{
-		IdleAudioComponent->Play();
-	}
-}
-
-void AEnemy::StopIdelSound()
-{
-	//Audio Component가 없으면 처리하지 않음
-	if (!IdleAudioComponent)
-	{
-		return;
-	}
-	//Idle 사운드 정지
-	IdleAudioComponent->Stop();
 }
 
 void AEnemy::BeginPlay()
@@ -130,8 +89,6 @@ void AEnemy::BeginPlay()
 	{
 		PlayAnimMontage(IdleMontage);
 	}
-	//Idle 반복 사운드 재생
-	PlayIdleSound();
 }
 
 void AEnemy::OnDetectionBeginOverlap(

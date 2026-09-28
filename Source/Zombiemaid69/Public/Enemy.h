@@ -17,9 +17,6 @@ class ASerum;
 class USphereComponent;
 class UPrimitiveComponent;
 
-class UAudioComponent;
-class USoundBase;
-
 /** 실제 체력 변경과 공격자 정보 전달 */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_FiveParams(
 	FEnemyHealthChangedSignature,
@@ -109,13 +106,6 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Enemy|Animation")
 	TObjectPtr<UAnimMontage> DeadMontage; //사망 애니메이션
 
-	//사운드
-	UFUNCTION(BlueprintCallable, Category = "Enemy|Sound")
-	void PlayIdleSound();
-	//Idle 사운드 정지
-	UFUNCTION(BlueprintCallable, Category = "Enemy|Sound")
-	void StopIdelSound();
-
 protected:
 	//스탯
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy|Stat")
@@ -155,15 +145,6 @@ protected:
 	//피격 데미지 숫자 Actor
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy|Damage")
 	TSubclassOf<AActor> DamageNumberClass;
-
-	//사운드
-	//Idle 반복 사운드 Component
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Enemy|Sound")
-	TObjectPtr<UAudioComponent> IdleAudioComponent;
-	//Idle 반복 사운드
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy|Sound")
-	TObjectPtr<USoundBase> IdleSound;
-	//Idle 사운드 재생
 
 	virtual void BeginPlay() override;
 
