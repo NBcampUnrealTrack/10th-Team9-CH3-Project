@@ -26,6 +26,17 @@ class ZOMBIEMAID69_API AAPlayerCharacter : public ACharacter
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
 	USkeletalMeshComponent* FirstPersonMesh;
 
+	/** 주사기 사용 중에만 표시할 캐릭터의 팔 메시 */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
+	USkeletalMeshComponent* SyringeArmsMeshComponent;
+
+	/** 사용 중 오른손에 붙여 표시할 주사기 메시 */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
+	USkeletalMeshComponent* SyringeMeshComponent;
+
+	bool bShowingSyringeAnimation = false;
+	bool bSyringeFirstPersonMeshWasHidden = false;
+
 	TWeakObjectPtr<class AWeaponBase> BandageHiddenWeapon;
 	bool bBandageWeaponWasHidden = false;
 
@@ -133,6 +144,14 @@ protected:
 	/** 붕대 사용이 시작된 후 재생되는 1인칭 애니메이션 */
 	UPROPERTY(EditDefaultsOnly, Category = "Healing|Animation")
 	TObjectPtr<UAnimSequence> BandageAnimation = nullptr;
+
+	/** 주사기 사용용 1인칭 팔 애니메이션 */
+	UPROPERTY(EditDefaultsOnly, Category = "Healing|Animation")
+	TObjectPtr<UAnimSequence> SyringeAnimation = nullptr;
+
+	/** 주사기 메시 자체의 애니메이션 */
+	UPROPERTY(EditDefaultsOnly, Category = "Healing|Animation")
+	TObjectPtr<UAnimSequence> SyringePropAnimation = nullptr;
 
 	/** 레벨업 특전(Perk)을 관리하는 컴포넌트 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
