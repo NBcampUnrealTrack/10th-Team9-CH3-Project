@@ -14,7 +14,6 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnFireSucceeded);
 
 //장전 시작 델리게이트
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnReloadStarted);
-
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnReloadFinished);
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnReloadCancelled);
@@ -63,6 +62,20 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "Combat|Events")
 	FOnReloadCancelled OnReloadCancelled;
 
+	UPROPERTY(BlueprintAssignable, Category = "Combat|Events")
+	FOnReloadFinished OnReloadFinished;
+
+	/** 성공한 발사/장전 횟수: 런타임 검증 및 디버그용. */
+	UPROPERTY(BlueprintReadOnly, Transient, Category = "Combat|State")
+	int32 SuccessfulShotCount = 0;
+
+	UPROPERTY(BlueprintReadOnly, Transient, Category = "Combat|State")
+	int32 CompletedReloadCount = 0;
+
+	/** 디버그 라인은 명시적으로 켠 경우만 표시. */
+	UPROPERTY(EditAnywhere, Category = "Combat|Debug")
+	bool bDrawShotDebug = false;
+
 	/** 발사 시도 (좌클릭을 누른 순간 캐릭터에서 호출) */
 	UFUNCTION(BlueprintCallable, Category = "Combat")
 	void Fire();
@@ -98,6 +111,7 @@ public:
 protected:
 	/** 게임 시작 시 한 번 호출되는 언리얼 기본 함수 */
 	virtual void BeginPlay() override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 private:
 	/** 마지막으로 발사한 시점의 월드 시간 (연사속도 제한 계산용) */
@@ -109,7 +123,12 @@ private:
 	/** 현재 장착 중인 무기의 슬롯 번호 (같은 슬롯을 다시 누르면 아무 동작도 하지 않도록 체크용) */
 	UPROPERTY(BlueprintReadOnly, Category = "Combat|Weapon", meta = (AllowPrivateAccess = "true"))
 	int32 CurrentWeaponSlotIndex = -1;
-	
+
+	/** 재장전 완료 시점에 호출될 타이머 핸들 */
+	FTimerHandle ReloadTimerHandle;
+	TWeakObjectPtr<AWeaponBase> ReloadingWeapon;
+
 	/** 실제 라인트레이스를 수행해서 대상을 맞추고 데미지를 적용하는 내부 함수 */
 	void PerformHitTrace();
+
 };

@@ -7,6 +7,7 @@
 #include "Camera/CameraComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "DrawDebugHelpers.h"
+#include "TimerManager.h"
 
 UCombatComponent::UCombatComponent()
 {
@@ -59,6 +60,7 @@ void UCombatComponent::SwitchWeapon(int32 SlotIndex)
 	// (탄약 상태를 유지한 채로 인벤토리에 계속 보관)
 	if (EquippedWeapon)
 	{
+		EquippedWeapon->StopFeedback();
 		EquippedWeapon->SetActorHiddenInGame(true);
 		EquippedWeapon->SetActorEnableCollision(false);
 		EquippedWeapon->SetActorTickEnabled(false);
@@ -125,8 +127,6 @@ void UCombatComponent::SwitchWeapon(int32 SlotIndex)
 
 void UCombatComponent::Fire()
 {
-	// 함수 진입 확인용 로그
-	UE_LOG(LogTemp, Warning, TEXT("Fire() 호출됨"));
 
 	// 장착된 무기가 없으면 발사 불가
 	if (!EquippedWeapon)
@@ -153,7 +153,12 @@ void UCombatComponent::Fire()
 		return;
 	}
 
-	// 총알이 없으면 발사되지 않도록 함
+	const float CurrentTime = GetWorld()->GetTimeSeconds();
+	const float Interval = FMath::IsFinite(EquippedWeapon->FireRate)
+		? FMath::Max(EquippedWeapon->FireRate, 0.01f) : 0.15f;
+	if (CurrentTime - LastFireTime < Interval) return;
+
+	// 빈 탄창 소리도 발사 간격을 지켜 입력 반복으로 중첩되지 않게 함.
 	if (!HasAmmo())
 	{
 		UE_LOG(
@@ -163,51 +168,38 @@ void UCombatComponent::Fire()
 			EquippedWeapon->CurrentAmmoInClip
 		);
 
-		// TODO: 총알 없음(Dry Fire) 사운드 재생 코드 추가 예정
-		return;
-	}
-
-	// 현재 월드 시간을 가져옴
-	const float CurrentTime = GetWorld()->GetTimeSeconds();
-
-	// 마지막 발사 시점으로부터 발사 간격(FireRate)이 지나지 않았다면 발사 거부
-	if (CurrentTime - LastFireTime < EquippedWeapon->FireRate)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("Fire() 실패: 발사 간격(FireRate) 미충족"));
+		LastFireTime = CurrentTime;
+		EquippedWeapon->PlayDryFireFeedback();
 		return;
 	}
 
 	// 마지막 발사 시점을 현재 시간으로 갱신
 	LastFireTime = CurrentTime;
 
-	// 실제 히트 판정 및 데미지 처리를 수행
+	// 탄창에서 탄약 1발 소모
+	TWeakObjectPtr<AWeaponBase> FiredWeapon = EquippedWeapon;
+	FiredWeapon->CurrentAmmoInClip--;
+	++SuccessfulShotCount;
+	const int32 ClipAfterShot = FiredWeapon->CurrentAmmoInClip;
+	const int32 ReserveAfterShot = FiredWeapon->ReserveAmmo;
+
+	// 데미지/이벤트 콜백에서 무기가 교체되더라도 다른 무기의 탄약을 소모하지 않음.
 	PerformHitTrace();
 
-	// 탄창에서 탄약 1발 소모
-	EquippedWeapon->CurrentAmmoInClip--;
-
-	OnAmmoChanged.Broadcast(
-		EquippedWeapon->CurrentAmmoInClip,
-		EquippedWeapon->ReserveAmmo
-	);
+	if (FiredWeapon.IsValid() && EquippedWeapon == FiredWeapon.Get())
+		OnAmmoChanged.Broadcast(ClipAfterShot, ReserveAfterShot);
 	OnFireSucceeded.Broadcast();
-
-	// 탄약 변경 사항을 UI에 알림
-	OnAmmoChanged.Broadcast(
-		EquippedWeapon->CurrentAmmoInClip,
-		EquippedWeapon->ReserveAmmo
-	);
+	if (FiredWeapon.IsValid() && EquippedWeapon == FiredWeapon.Get()) FiredWeapon->PlayFireFeedback();
 
 	// 실제로 발사가 완료됐다는 로그
 	UE_LOG(
 		LogTemp,
 		Warning,
 		TEXT("발사 성공! 남은 탄약: %d / %d"),
-		EquippedWeapon->CurrentAmmoInClip,
-		EquippedWeapon->ReserveAmmo
+		ClipAfterShot,
+		ReserveAfterShot
 	);
 
-	// TODO: 총기 발사(Fire) 사운드 재생 코드 추가 예정
 }
 
 void UCombatComponent::PerformHitTrace()
@@ -273,7 +265,7 @@ void UCombatComponent::PerformHitTrace()
 	);
 
 	// 디버그용 트레이스 라인 표시
-	DrawDebugLine(
+	if (bDrawShotDebug) DrawDebugLine(
 		GetWorld(),
 		StartLocation,
 		bHit ? HitResult.Location : EndLocation,
@@ -347,10 +339,30 @@ void UCombatComponent::StartReload()
 
 	// 재장전 상태로 전환
 	bIsReloading = true;
+	bIsAiming = false;
+	ReloadingWeapon = EquippedWeapon;
+	const float Duration = FMath::IsFinite(EquippedWeapon->ReloadDuration)
+		? FMath::Max(EquippedWeapon->ReloadDuration, 0.01f) : 1.8f;
 
 	// 실제 재장전이 시작됐음을 블루프린트에 알림
 	OnReloadStarted.Broadcast();
 
+	if (!ReloadingWeapon.IsValid() || EquippedWeapon != ReloadingWeapon.Get() || !bIsReloading)
+	{
+		bIsReloading = false;
+		ReloadingWeapon.Reset();
+		return;
+	}
+	ReloadingWeapon->PlayReloadFeedback(Duration);
+
+	// 애니메이션 노티파이가 먼저 완료하면 이 보조 타이머는 FinishReload()에서 해제.
+	GetWorld()->GetTimerManager().SetTimer(
+		ReloadTimerHandle,
+		this,
+		&UCombatComponent::FinishReload,
+		Duration,
+		false
+	);
 }
 
 void UCombatComponent::FinishReload()
@@ -361,20 +373,23 @@ void UCombatComponent::FinishReload()
 		return;
 	}
 
+	// 이전 장전의 타이머가 다음 장전을 조기 완료하지 않도록 해제.
+	GetWorld()->GetTimerManager().ClearTimer(ReloadTimerHandle);
+
 	// 재장전 도중 무기가 사라진 예외 상황 대비
-	if (!EquippedWeapon)
+	if (!ReloadingWeapon.IsValid() || EquippedWeapon != ReloadingWeapon.Get())
 	{
-		bIsReloading = false;
+		CancelReload();
 		return;
 	}
 
 	// 탄창을 채우는 데 필요한 탄약 수 계산
 	const int32 AmmoNeeded =
-		EquippedWeapon->MaxAmmoInClip - EquippedWeapon->CurrentAmmoInClip;
+		FMath::Max(0, EquippedWeapon->MaxAmmoInClip - EquippedWeapon->CurrentAmmoInClip);
 
 	// 필요한 양과 예비 탄약 중 더 작은 값만 장전
 	const int32 AmmoToReload =
-		FMath::Min(AmmoNeeded, EquippedWeapon->ReserveAmmo);
+		FMath::Min(AmmoNeeded, FMath::Max(0, EquippedWeapon->ReserveAmmo));
 
 	// 탄창에 탄약 추가
 	EquippedWeapon->CurrentAmmoInClip += AmmoToReload;
@@ -384,12 +399,25 @@ void UCombatComponent::FinishReload()
 
 	// 재장전 상태 해제
 	bIsReloading = false;
+	ReloadingWeapon.Reset();
+	EquippedWeapon->StopFeedback();
+	++CompletedReloadCount;
 
 	// 변경된 탄약 정보를 UI에 알림
 	OnAmmoChanged.Broadcast(
 		EquippedWeapon->CurrentAmmoInClip,
 		EquippedWeapon->ReserveAmmo
 	);
+	OnReloadFinished.Broadcast();
+}
+
+void UCombatComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	GetWorld()->GetTimerManager().ClearTimer(ReloadTimerHandle);
+	if (ReloadingWeapon.IsValid()) ReloadingWeapon->StopFeedback();
+	ReloadingWeapon.Reset();
+	bIsReloading = false;
+	Super::EndPlay(EndPlayReason);
 }
 
 bool UCombatComponent::HasAmmo() const
@@ -424,6 +452,12 @@ void UCombatComponent::CancelReload()
 		return;
 	}
 
+	GetWorld()->GetTimerManager().ClearTimer(ReloadTimerHandle);
+	if (ReloadingWeapon.IsValid())
+	{
+		ReloadingWeapon->StopFeedback();
+	}
+	ReloadingWeapon.Reset();
 	bIsReloading = false;
 	OnReloadCancelled.Broadcast();
 }

@@ -48,6 +48,46 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon|State")
 	int32 ReserveAmmo;
 
+	/** 총구 위치는 무기별로 지정. 기존 무기/손 Transform과 독립적입니다. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon|Feedback")
+	TObjectPtr<class USceneComponent> MuzzlePoint;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon|Feedback")
+	TObjectPtr<class UStaticMeshComponent> MuzzleFlashMesh;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|Feedback")
+	TObjectPtr<class USoundBase> FireSound;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|Feedback")
+	TObjectPtr<USoundBase> ReloadSound;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|Feedback")
+	TObjectPtr<USoundBase> DryFireSound;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|Feedback")
+	TObjectPtr<class UAnimMontage> FireMontage;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|Feedback")
+	TObjectPtr<UAnimMontage> ReloadMontage;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Weapon|Feedback", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float FeedbackVolume = 0.65f;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Weapon|Feedback", meta = (ClampMin = "0.01", ClampMax = "0.15"))
+	float MuzzleFlashDuration = 0.045f;
+
+	void PlayFireFeedback();
+	void PlayReloadFeedback(float Duration);
+	void PlayDryFireFeedback();
+	void StopFeedback();
+
 protected:
 	virtual void BeginPlay() override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+
+private:
+	FTimerHandle MuzzleFlashTimer;
+	TWeakObjectPtr<class UAudioComponent> ReloadAudio;
+	void HideMuzzleFlash();
+	void PlayArmsMontage(UAnimMontage* Montage, float Duration = 0.0f);
 };
