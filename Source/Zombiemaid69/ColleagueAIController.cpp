@@ -9,7 +9,9 @@
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "ColleagueCharacter.h"
+#include "Components/CapsuleComponent.h"
 #include "Navigation/PathFollowingComponent.h"
+#include "NavigationSystem.h"
 
 void AColleagueAIController::HandleFollowState(
 	APawn* ControlledPawn
@@ -203,6 +205,28 @@ void AColleagueAIController::EvaluateState()
 		return;
 	}
 
+	const AColleagueCharacter* RestingColleague =
+		Cast<AColleagueCharacter>(ControlledPawn);
+
+	if (IsValid(RestingColleague) && RestingColleague->IsResting())
+	{
+		CurrentTarget = nullptr;
+		LastCombatEndTime = -1.0f;
+		RecallStartTime = -1.0f;
+		bResumeFollowBeforeNextShot = false;
+
+		SetColleagueState(EColleagueState::Rest);
+		StopMovement();
+		ClearFocus(EAIFocusPriority::Gameplay);
+		return;
+	}
+
+	if (CurrentState == EColleagueState::Rest)
+	{
+		RequestRecall();
+		return;
+	}
+
 	// 호출 중에는 적 선택과 사격을 하지 않음
 	if (CurrentState == EColleagueState::Recall)
 	{
@@ -281,14 +305,13 @@ void AColleagueAIController::EvaluateState()
 	}
 
 	const bool bCanEnterRecovery =
-		bRecoveryProtocolUnlocked &&
-		LastCombatEndTime >= 0.0f &&
-		CurrentTime - LastCombatEndTime >= RecoveryDelay;
+		bRecoveryProtocolUnlocked
+		&& LastCombatEndTime >= 0.0f
+		&& CurrentTime - LastCombatEndTime >= RecoveryDelay;
 
 	if (bCanEnterRecovery)
 	{
-		SetColleagueState(EColleagueState::Recovery);
-		return;
+		LastCombatEndTime = -1.0f;
 	}
 
 	SetColleagueState(EColleagueState::Follow);
@@ -586,6 +609,12 @@ void AColleagueAIController::RequestRecall()
 		return;
 	}
 
+	if (Colleague->IsResting())
+	{
+		return;
+	}
+
+	NextRecallTeleportTime = 0.0;
 	RecallStartTime = World->GetTimeSeconds();
 	CurrentTarget = nullptr;
 	LastCombatEndTime = -1.0f;
@@ -632,6 +661,14 @@ void AColleagueAIController::HandleRecallState(APawn* ControlledPawn)
 		SetColleagueState(EColleagueState::Follow);
 		return;
 	}
+
+	if (Colleague->IsResting())
+	{
+		SetColleagueState(EColleagueState::Rest);
+		StopMovement();
+		return;
+	}
+
 	const float CurrentTime = World->GetTimeSeconds();
 
 	// 호출 중에도 적 미감지 3초 후 공격 허용 규칙 유지
@@ -692,6 +729,22 @@ void AColleagueAIController::HandleRecallState(APawn* ControlledPawn)
 		0.0f
 	);
 
+	const float DistanceSquared = FVector::DistSquared(
+		Colleague->GetActorLocation(),
+		PlayerPawn->GetActorLocation()
+	);
+
+	if (DistanceSquared >= FMath::Square(RecallTeleportDistance)
+		&& CurrentTime >= NextRecallTeleportTime)
+	{
+		NextRecallTeleportTime = CurrentTime + 1.0;
+
+		if (TryTeleportNearPlayer(Colleague, PlayerPawn))
+		{
+			RecallStartTime = CurrentTime;
+		}
+	}
+
 	const EPathFollowingRequestResult::Type MoveResult = MoveToActor(
 		PlayerPawn,
 		FMath::Max(RecallAcceptanceRadius, 0.0f),
@@ -705,4 +758,109 @@ void AColleagueAIController::HandleRecallState(APawn* ControlledPawn)
 	{
 		FinishRecall();
 	}
+}
+
+bool AColleagueAIController::TryTeleportNearPlayer(
+	AColleagueCharacter* Colleague,
+	APawn* PlayerPawn)
+{
+	UWorld* World = GetWorld();
+
+	if (!HasAuthority()
+		|| !IsValid(World)
+		|| !IsValid(Colleague)
+		|| !IsValid(PlayerPawn)
+		|| Colleague->IsResting())
+	{
+		return false;
+	}
+
+	UNavigationSystemV1* Navigation =
+		FNavigationSystem::GetCurrent<UNavigationSystemV1>(World);
+	UCapsuleComponent* Capsule = Colleague->GetCapsuleComponent();
+
+	if (!IsValid(Navigation) || !IsValid(Capsule))
+	{
+		return false;
+	}
+
+	const FVector PlayerLocation = PlayerPawn->GetNavAgentLocation();
+	ANavigationData* NavData = Navigation->GetNavDataForProps(
+		Colleague->GetNavAgentPropertiesRef(),
+		PlayerLocation
+	);
+
+	if (!IsValid(NavData))
+	{
+		return false;
+	}
+
+	FNavLocation PlayerNavLocation;
+	if (!Navigation->ProjectPointToNavigation(
+		PlayerLocation,
+		PlayerNavLocation,
+		FVector(100.0f, 100.0f, 250.0f),
+		NavData))
+	{
+		return false;
+	}
+
+	const float Radius = Capsule->GetScaledCapsuleRadius();
+	const float HalfHeight = Capsule->GetScaledCapsuleHalfHeight();
+	FCollisionQueryParams QueryParams(
+		SCENE_QUERY_STAT(ColleagueRecallTeleport),
+		false,
+		Colleague
+	);
+
+	for (int32 Attempt = 0; Attempt < 16; ++Attempt)
+	{
+		FNavLocation Candidate;
+		if (!Navigation->GetRandomReachablePointInRadius(
+			PlayerNavLocation.Location,
+			450.0f,
+			Candidate,
+			NavData))
+		{
+			continue;
+		}
+
+		if (FVector::DistSquared2D(
+				Candidate.Location,
+				PlayerNavLocation.Location) < FMath::Square(200.0f)
+			|| FMath::Abs(
+				Candidate.Location.Z - PlayerNavLocation.Location.Z) > 150.0f)
+		{
+			continue;
+		}
+
+		const FVector Destination =
+			Candidate.Location + FVector(0.0f, 0.0f, HalfHeight + 3.0f);
+		const bool bBlocked = World->OverlapBlockingTestByProfile(
+			Destination,
+			FQuat::Identity,
+			Capsule->GetCollisionProfileName(),
+			FCollisionShape::MakeCapsule(Radius, HalfHeight),
+			QueryParams
+		);
+
+		if (bBlocked)
+		{
+			continue;
+		}
+
+		const FRotator DestinationRotation(
+			0.0f,
+			PlayerPawn->GetActorRotation().Yaw,
+			0.0f
+		);
+		if (Colleague->TeleportTo(Destination, DestinationRotation, false, false))
+		{
+			StopMovement();
+			Colleague->GetCharacterMovement()->StopMovementImmediately();
+			return true;
+		}
+	}
+
+	return false;
 }

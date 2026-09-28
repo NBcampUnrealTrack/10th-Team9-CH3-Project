@@ -1,6 +1,7 @@
 ﻿#include "EnemyAIController.h"
 #include "Enemy.h"
 #include "APlayerCharacter.h"
+#include "ColleagueCharacter.h"
 #include "StatsComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Kismet/GameplayStatics.h"
@@ -10,6 +11,35 @@
 #include "NavigationSystem.h"
 #include "NavigationPath.h"
 #include "TimerManager.h"
+
+namespace
+{
+bool IsActiveEnemyTarget(AActor* Actor)
+{
+	if (!IsValid(Actor))
+	{
+		return false;
+	}
+
+	if (const AColleagueCharacter* Colleague = Cast<AColleagueCharacter>(Actor))
+	{
+		return !Colleague->IsResting();
+	}
+
+	if (!Actor->ActorHasTag(TEXT("Player")))
+	{
+		return false;
+	}
+
+	if (AAPlayerCharacter* Player = Cast<AAPlayerCharacter>(Actor))
+	{
+		UStatsComponent* Stats = Player->GetStatsComponent();
+		return IsValid(Stats) && Stats->IsAlive();
+	}
+
+	return true;
+}
+}
 
 AEnemyAIController::AEnemyAIController()
 {
@@ -27,25 +57,7 @@ AEnemyAIController::AEnemyAIController()
 
 bool AEnemyAIController::IsTargetAlive() const
 {
-	//현재 타겟이 없으면 살아있지 않음
-	if (!TargetActor)
-	{
-		return false;
-	}
-	//현재 타겟이 Player인지 확인
-	AAPlayerCharacter* Player = Cast<AAPlayerCharacter>(TargetActor);
-	if (!Player)
-	{
-		return true;
-	}
-	//Player의 StatsComponent 가져오기
-	UStatsComponent* StatsComponent = Player->GetStatsComponent();
-	if (!StatsComponent)
-	{
-		return false;
-	}
-	//Player의 생존 상태 반환
-	return StatsComponent->IsAlive();
+	return IsActiveEnemyTarget(TargetActor.Get());
 }
 
 void AEnemyAIController::OnPossess(APawn* InPawn)
@@ -249,8 +261,8 @@ void AEnemyAIController::OnEnemyAttackEnd()
 
 void AEnemyAIController::OnEnemyAttackHit()
 {
-	//공격 대상이 없으면 처리하지않음
-	if (!TargetActor)
+	// 사망한 플레이어 또는 휴식 중인 동료에게는 타격을 적용하지 않음.
+	if (!IsTargetAlive())
 	{
 		return;
 	}
@@ -350,8 +362,8 @@ void AEnemyAIController::OnEnemyDamaged(AActor* Attacker)
 	{
 		return;
 	}
-	//Player 태그가 있는 대상만 추적
-	if (!Attacker->ActorHasTag(TEXT("Player")))
+	// 살아 있는 플레이어와 휴식 중이 아닌 동료만 추적.
+	if (!IsActiveEnemyTarget(Attacker))
 	{
 		return;
 	}
@@ -425,8 +437,8 @@ void AEnemyAIController::OnTargetDetected(AActor* DetectedActor)
 	{
 		return;
 	}
-	//Player 태그가 있는 대상만 감지
-	if (!DetectedActor->ActorHasTag(TEXT("Player")))
+	// 살아 있는 플레이어와 휴식 중이 아닌 동료만 감지
+	if (!IsActiveEnemyTarget(DetectedActor))
 	{
 		return;
 	}
