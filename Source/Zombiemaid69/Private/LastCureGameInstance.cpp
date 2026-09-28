@@ -47,11 +47,17 @@ bool ULastCureGameInstance::IsVaccineCreated() const
 
 void ULastCureGameInstance::AddSerum(int32 Amount)
 {
+
 	if (Amount <= 0)
 	{
 		return;
 	}
+
+	//실제 혈청 수량 증가
 	Serum += Amount;
+
+	// 변경된 수량을 HUD가 읽도록 알림
+	OnSerumChanged.Broadcast();
 }
 
 int32 ULastCureGameInstance::GetSerum() const
@@ -72,10 +78,16 @@ bool ULastCureGameInstance::SpendSerum(int32 Cost)
 	}
 
 	Serum -= Cost;
+
+	// 변경된 수량을 HUD가 읽도록 알림
+	OnSerumChanged.Broadcast();
 	return true;
 }
 
 void ULastCureGameInstance::ApplySerumDeathPenalty()
 {
 	Serum /= 2;
+
+	// 변경된 수량을 HUD가 읽도록 알림
+	OnSerumChanged.Broadcast();
 }
