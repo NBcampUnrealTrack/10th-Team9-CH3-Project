@@ -7,6 +7,8 @@
 #include "Components/SphereComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/AudioComponent.h"
+#include "NiagaraFunctionLibrary.h"
+#include "NiagaraSystem.h"
 #include "Sound/SoundBase.h"
 #include "TimerManager.h"
 #include "LastCureGameMode.h"
@@ -71,6 +73,9 @@ AEnemy::AEnemy()
 	IdleSound = nullptr;
 	ChaseSound = nullptr;
 	HitSound = nullptr;
+
+	//피격 이펙트 초기화
+	HitEffect = nullptr;
 }
 
 void AEnemy::PlayIdleSound()
@@ -204,6 +209,20 @@ float AEnemy::TakeDamage(
 	}
 	//실제로 받은 데미지 표시
 	ShowDamageNumber(HealthLost);
+	
+	//몸통 위치에 피격 이펙트 생성
+	if (HitEffect)
+	{
+		const FVector HitEffectLocation =
+			GetActorLocation() + FVector(0.0f, 0.0f, 50.0f);
+
+		UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+			GetWorld(),
+			HitEffect,
+			HitEffectLocation,
+			GetActorRotation()
+		);
+	}
 
 	//피겨 위치에서 Hit 사운드 재생
 	if (HitSound)
