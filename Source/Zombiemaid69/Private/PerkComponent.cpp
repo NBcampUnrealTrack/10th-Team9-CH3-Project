@@ -35,7 +35,7 @@ void UPerkComponent::BeginPlay()
 	}
 	else
 	{
-		// StatsComponent가 없으면 특전 시스템 자체가 동작할 수 없으므로 경고 로그 ㅜ
+		// StatsComponent가 없으면 특전 시스템 자체가 동작할 수 없으므로 경고 로그
 		UE_LOG(LogTemp, Warning, TEXT("PerkComponent: StatsComponent를 찾을 수 없습니다. 같은 액터에 부착되어 있는지 확인하세요."));
 	}
 }

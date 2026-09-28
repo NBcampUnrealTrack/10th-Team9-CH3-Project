@@ -358,25 +358,31 @@ void UCombatComponent::StartReload()
 	bIsReloading = true;
 	bIsAiming = false;
 	ReloadingWeapon = EquippedWeapon;
+	const TWeakObjectPtr<AWeaponBase> StartedWeapon = ReloadingWeapon;
+	const uint64 RequestId = ++ReloadRequestId;
 	const float Duration = FMath::IsFinite(EquippedWeapon->ReloadDuration)
 		? FMath::Max(EquippedWeapon->ReloadDuration, 0.01f) : 1.8f;
 
 	// 실제 재장전이 시작됐음을 블루프린트에 알림
 	OnReloadStarted.Broadcast();
 
-	if (!ReloadingWeapon.IsValid() || EquippedWeapon != ReloadingWeapon.Get() || !bIsReloading)
+	// 이벤트에서 취소/교체 후 새 장전이 시작돼도 그 새 요청을 덮어쓰지 않음.
+	if (RequestId != ReloadRequestId || !bIsReloading) return;
+	if (!StartedWeapon.IsValid() || EquippedWeapon != StartedWeapon.Get())
 	{
-		bIsReloading = false;
-		ReloadingWeapon.Reset();
+		CancelReload();
 		return;
 	}
-	ReloadingWeapon->PlayReloadFeedback(Duration);
+	StartedWeapon->PlayReloadFeedback(Duration);
+	if (RequestId != ReloadRequestId || !bIsReloading) return;
 
-	// 애니메이션 노티파이가 먼저 완료하면 이 보조 타이머는 FinishReload()에서 해제.
+	// 장전 시간은 무기 설정을 기준으로 통일. 이전 요청의 타이머는 새 장전에 적용하지 않음.
 	GetWorld()->GetTimerManager().SetTimer(
 		ReloadTimerHandle,
-		this,
-		&UCombatComponent::FinishReload,
+		FTimerDelegate::CreateWeakLambda(this, [this, RequestId]()
+		{
+			if (RequestId == ReloadRequestId) FinishReload();
+		}),
 		Duration,
 		false
 	);
@@ -416,6 +422,7 @@ void UCombatComponent::FinishReload()
 
 	// 재장전 상태 해제
 	bIsReloading = false;
+	++ReloadRequestId;
 	ReloadingWeapon.Reset();
 	EquippedWeapon->StopFeedback();
 	++CompletedReloadCount;
@@ -431,9 +438,11 @@ void UCombatComponent::FinishReload()
 void UCombatComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
 	GetWorld()->GetTimerManager().ClearTimer(ReloadTimerHandle);
-	if (ReloadingWeapon.IsValid()) ReloadingWeapon->StopFeedback();
+	const TWeakObjectPtr<AWeaponBase> StoppedWeapon = ReloadingWeapon;
 	ReloadingWeapon.Reset();
 	bIsReloading = false;
+	++ReloadRequestId;
+	if (StoppedWeapon.IsValid()) StoppedWeapon->StopFeedback();
 	Super::EndPlay(EndPlayReason);
 }
 
@@ -470,12 +479,12 @@ void UCombatComponent::CancelReload()
 	}
 
 	GetWorld()->GetTimerManager().ClearTimer(ReloadTimerHandle);
-	if (ReloadingWeapon.IsValid())
-	{
-		ReloadingWeapon->StopFeedback();
-	}
+	const TWeakObjectPtr<AWeaponBase> StoppedWeapon = ReloadingWeapon;
 	ReloadingWeapon.Reset();
 	bIsReloading = false;
+	++ReloadRequestId;
+	// 몽타주 중단 콜백보다 먼저 상태를 해제하여 재귀 취소를 방지.
+	if (StoppedWeapon.IsValid()) StoppedWeapon->StopFeedback();
 	OnReloadCancelled.Broadcast();
 }
 

@@ -1,5 +1,19 @@
 # Third-party player weapon audio
 
+## Current project assets — cleanup status (2026-09-28)
+
+The player weapons currently use FireBalance v4 for pistol/rifle shots,
+FireFullTail v6 for shotgun/sniper shots, and RecordedV2 for all reload sounds.
+The user accepted the FullTail variants; their existing `Preview_v6` asset names
+are retained to preserve references. `ProceduralDrafts/S_FP_DryFire_Draft` is
+still referenced by the three long guns and is not an unused test asset.
+
+Unreferenced LibraryShots shotgun/sniper assets and FireNoAction v5 trials were
+removed from the project during cleanup. Recovery copies and source-processing
+records are archived outside the Git repository. The historical revision notes
+below describe how the retained sounds were made, not a current file inventory.
+Keep the source, author and license notices for the retained derived sounds.
+
 ## Michel Baradari — Chaingun, pistol, rifle, shotgun shots
 
 Sounds (c) Michel Baradari — https://apollo-music.de/
@@ -106,3 +120,53 @@ Both assets are under `/Game/PlayerCombat/Audio/FireBalance`. Source PCM, pitch,
 duration and original sound assets are unchanged; only duplicate SoundWave
 playback volume and the two player weapon FireSound references were changed.
 Reload sounds and the common weapon FeedbackVolume values remain unchanged.
+
+## FireNoAction — archived shotgun/sniper trial (2026-09-28)
+
+The player shotgun and sniper previously selected these edited derivatives of
+Michel Baradari's CC BY 3.0 shots listed above; they are no longer in the project:
+
+- `/Game/PlayerCombat/Audio/FireNoAction/S_FP_Shotgun_Fire_NoAction_v5`:
+  retain the first 0.390 seconds of the balanced `shots/shotgun.wav` derivative;
+  apply a 90 ms raised-cosine end fade to finish before the mechanical action tail.
+- `/Game/PlayerCombat/Audio/FireNoAction/S_FP_Sniper_Fire_NoAction_v5`:
+  retain the first 0.640 seconds of the balanced `shots/rifle.wav` derivative;
+  apply a 140 ms raised-cosine end fade to finish before the mechanical action tail.
+
+The attack before each end fade, stereo channels, 44.1 kHz PCM16 format, playback
+volume and pitch are retained. Mechanical tails and their later reverberation
+are omitted, so the overall shots are shorter. No generated layers were added.
+The original LibraryShots assets remain unchanged for recovery. Reload sounds,
+pistol/rifle sounds, weapon firing rates, and grip/animation settings are unchanged.
+Retain the original author, source and CC BY 3.0 attribution above when distributing
+these derivatives; this modification does not change their license.
+
+## FireFullTail — accepted current shotgun/sniper sounds (2026-09-28)
+
+The player shotgun and sniper currently select the v6 FullTail Preview variants
+under `/Game/PlayerCombat/Audio/FireFullTail/`. These are designed composites, not
+unchanged recordings or recordings of the exact displayed weapons.
+
+- `S_FP_Shotgun_Fire_FullTail_Preview_v6`: Michel Baradari's existing balanced
+  shotgun attack is unchanged through 0.20 seconds; a 0.20–0.36 second equal-power
+  crossfade leads into the recorded decay from `Mossberg/N_26P.wav` in The Free
+  Firearm Sound Library. Total duration: 2.60 seconds.
+- `S_FP_Sniper_Fire_FullTail_Preview_v6`: Michel Baradari's existing balanced
+  rifle attack is unchanged through 0.34 seconds; a 0.34–0.60 second equal-power
+  crossfade leads into the recorded decay from `Tikka/W_24P.wav` in The Free
+  Firearm Sound Library. Total duration: 2.85 seconds.
+
+Attack source: Michel Baradari, https://opengameart.org/node/2566,
+CC BY 3.0, https://creativecommons.org/licenses/by/3.0/.
+Recorded decay source: Ben Jaszczak, Brian Nelson, Kevin Heras and Matthew Nanney,
+https://opengameart.org/content/the-free-firearm-sound-library,
+CC0, https://creativecommons.org/publicdomain/zero/1.0/.
+
+Changes: tail selection, 44.1 kHz stereo PCM16 resampling, tail gain matching,
+equal-power crossfades, and 280 ms fades at the quiet end. No time stretching or
+generated echo. Source attacks, previous LibraryShots and FireNoAction assets
+are archived outside the project for comparison/recovery. Playback volume/pitch, reload sounds,
+weapon firing rates and animation/grip settings are unchanged, but the composite
+waveforms, tail levels and perceived timbre differ from the originals.
+Retain the author/source/license attribution for the CC BY 3.0 attack derivatives
+when distributing these accepted sounds.

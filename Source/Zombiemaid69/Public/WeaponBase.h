@@ -76,12 +76,31 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon|State")
 	int32 ReserveAmmo;
 
-	/** 총구 위치는 무기별로 지정. 기존 무기/손 Transform과 독립적입니다. */
+	/** 총구 위치는 무기별로 지정. 기존 무기/손 Transform과 독립적 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon|Feedback")
 	TObjectPtr<class USceneComponent> MuzzlePoint;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon|Feedback")
 	TObjectPtr<class UStaticMeshComponent> MuzzleFlashMesh;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon|Feedback")
+	TObjectPtr<class UPointLightComponent> MuzzleLight;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Weapon|Feedback")
+	TObjectPtr<class UStaticMesh> MuzzleSmokeMesh;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Weapon|Feedback")
+	TObjectPtr<class UMaterialInterface> MuzzleSmokeMaterial;
+
+	/** 외형 조정. 발사속도 반동은 미제어 */
+	UPROPERTY(EditDefaultsOnly, Category = "Weapon|Feedback", meta = (ClampMin = "0.1", ClampMax = "2.0"))
+	float MuzzleSmokeDuration = 0.65f;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Weapon|Feedback", meta = (ClampMin = "0.1", ClampMax = "3.0"))
+	float MuzzleSmokeScale = 1.0f;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Weapon|Feedback", meta = (ClampMin = "0.0", ClampMax = "2000.0"))
+	float MuzzleLightIntensity = 16.0f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|Feedback")
 	TObjectPtr<class USoundBase> FireSound;
@@ -115,7 +134,42 @@ protected:
 
 private:
 	FTimerHandle MuzzleFlashTimer;
+	FTimerHandle MuzzleEffectsTimer;
+	UPROPERTY(Transient)
+	TObjectPtr<class UMaterialInstanceDynamic> MuzzleFlashMaterial;
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UStaticMeshComponent>> SmokeComponents;
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UMaterialInstanceDynamic>> SmokeMaterials;
+	struct FMuzzleSmokePuff
+	{
+		FVector Origin = FVector::ZeroVector;
+		FVector Velocity = FVector::ZeroVector;
+		float StartTime = 0.0f;
+		float Lifetime = 0.0f;
+		float Size = 1.0f;
+		float Roll = 0.0f;
+		bool bActive = false;
+	};
+	TArray<FMuzzleSmokePuff> SmokePuffs;
+	FVector MuzzleBaseScale = FVector::OneVector;
+	FRotator MuzzleBaseRotation = FRotator::ZeroRotator;
+	float MuzzleBurstStartTime = 0.0f;
+	float ActiveMuzzleDuration = 0.045f;
+	int32 NextSmokePuff = 0;
+	FRandomStream MuzzleRandom;
+	void InitializeMuzzleEffects();
+	void PlayMuzzleEffects();
+	void UpdateMuzzleEffects();
+	void StopMuzzleEffects();
 	TWeakObjectPtr<class UAudioComponent> ReloadAudio;
+	// 이 무기가 시작한 인스턴스만 중단하여 다른 무기의 몽타주를 건드리지 않음.
+	TWeakObjectPtr<class UAnimInstance> FeedbackAnimInstance;
+	TWeakObjectPtr<UAnimMontage> FeedbackMontage;
+	int32 FeedbackMontageInstanceId = INDEX_NONE;
+	uint64 FeedbackGeneration = 0;
 	void HideMuzzleFlash();
-	void PlayArmsMontage(UAnimMontage* Montage, float Duration = 0.0f);
+	void StopArmsMontage();
+	void PlayArmsMontage(UAnimMontage* Montage, float Duration = 0.0f, bool bReload = false);
+	void OnReloadMontageBlendingOut(UAnimMontage* Montage, bool bInterrupted, uint64 Generation);
 };
