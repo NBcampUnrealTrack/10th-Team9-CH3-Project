@@ -1,10 +1,13 @@
 ﻿#include "APlayerCharacter.h"
 #include "Animation/AnimInstance.h"
 #include "Animation/AnimSequence.h"
+#include "Animation/AnimSingleNodeInstance.h"
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Components/SpotLightComponent.h"
+#include "Engine/SkeletalMesh.h"
+#include "Materials/MaterialInterface.h"
 #include "EnhancedInputComponent.h"
 #include "InputActionValue.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -64,6 +67,44 @@ AAPlayerCharacter::AAPlayerCharacter()
 	FirstPersonMesh->SetCastShadow(false);
 	FirstPersonMesh->FirstPersonPrimitiveType = EFirstPersonPrimitiveType::FirstPerson;
 	FirstPersonMesh->SetCollisionProfileName(FName("NoCollision"));
+
+	// Use the existing character arms for healing; the imported BRAZO arms deform in their source animation.
+	SyringeArmsMeshComponent = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("SyringeArmsMesh"));
+	SyringeArmsMeshComponent->SetupAttachment(FirstPersonCameraComponent);
+	SyringeArmsMeshComponent->SetOnlyOwnerSee(true);
+	SyringeArmsMeshComponent->SetCastShadow(false);
+	SyringeArmsMeshComponent->FirstPersonPrimitiveType = EFirstPersonPrimitiveType::FirstPerson;
+	SyringeArmsMeshComponent->SetCollisionProfileName(FName(TEXT("NoCollision")));
+	SyringeArmsMeshComponent->SetHiddenInGame(true);
+	SyringeArmsMeshComponent->SetRelativeLocation(FVector(60.0f, 0.0f, -140.0f));
+	SyringeArmsMeshComponent->SetRelativeRotation(FRotator(0.0f, -90.0f, 0.0f));
+	static ConstructorHelpers::FObjectFinder<USkeletalMesh> SyringeArmsMeshAsset(
+		TEXT("/Game/hojun/QuantumCharacter/Mesh/Modules/SKM_Arms.SKM_Arms"));
+	if (SyringeArmsMeshAsset.Succeeded())
+	{
+		SyringeArmsMeshComponent->SetSkeletalMesh(SyringeArmsMeshAsset.Object);
+	}
+
+	SyringeMeshComponent = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("SyringeMesh"));
+	SyringeMeshComponent->SetupAttachment(SyringeArmsMeshComponent, FName(TEXT("hand_r")));
+	SyringeMeshComponent->SetOnlyOwnerSee(true);
+	SyringeMeshComponent->SetCastShadow(false);
+	SyringeMeshComponent->FirstPersonPrimitiveType = EFirstPersonPrimitiveType::FirstPerson;
+	SyringeMeshComponent->SetCollisionProfileName(FName(TEXT("NoCollision")));
+	SyringeMeshComponent->SetHiddenInGame(true);
+	static ConstructorHelpers::FObjectFinder<USkeletalMesh> SyringeMeshAsset(
+		TEXT("/Game/FirstPerson/Syringe/BRAZO1.BRAZO1"));
+	if (SyringeMeshAsset.Succeeded())
+	{
+		SyringeMeshComponent->SetSkeletalMesh(SyringeMeshAsset.Object);
+		SyringeMeshComponent->SetRelativeLocation(-SyringeMeshAsset.Object->GetBounds().Origin);
+	}
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> SyringeMaterialAsset(
+		TEXT("/Game/FirstPerson/Syringe/M_Syringe_Game.M_Syringe_Game"));
+	if (SyringeMaterialAsset.Succeeded())
+	{
+		SyringeMeshComponent->SetMaterial(0, SyringeMaterialAsset.Object);
+	}
 	FirstPersonCameraComponent->bEnableFirstPersonFieldOfView = true;
 	FirstPersonCameraComponent->bEnableFirstPersonScale = true;
 	FirstPersonCameraComponent->FirstPersonFieldOfView = 70.0f;
@@ -102,6 +143,18 @@ AAPlayerCharacter::AAPlayerCharacter()
 	{
 		BandageAnimation = BandageAnimationAsset.Object;
 	}
+	static ConstructorHelpers::FObjectFinder<UAnimSequence> SyringeAnimationAsset(
+		TEXT("/Game/FirstPerson/Anims/AN_FP_Syringe.AN_FP_Syringe"));
+	if (SyringeAnimationAsset.Succeeded())
+	{
+		SyringeAnimation = SyringeAnimationAsset.Object;
+	}
+	static ConstructorHelpers::FObjectFinder<UAnimSequence> SyringePropAnimationAsset(
+		TEXT("/Game/FirstPerson/Syringe/BRAZO_Anim_Scene1.BRAZO_Anim_Scene1"));
+	if (SyringePropAnimationAsset.Succeeded())
+	{
+		SyringePropAnimation = SyringePropAnimationAsset.Object;
+	}
 
 	// 카메라의 기본 시야각을 DefaultFOV로 맞춰서 시작 (에디터에서 카메라에 직접 설정한 값과 어긋나지 않도록 주의)
 	FirstPersonCameraComponent->FieldOfView = DefaultFOV;
@@ -110,6 +163,16 @@ AAPlayerCharacter::AAPlayerCharacter()
 void AAPlayerCharacter::BeginPlay()
 {
 	Super::BeginPlay();
+
+	// Blueprint inherited-component overrides can lose the constructor's socket binding.
+	// Reattach at runtime so the syringe follows the animated right hand.
+	if (SyringeMeshComponent && SyringeArmsMeshComponent)
+	{
+		SyringeMeshComponent->AttachToComponent(
+			SyringeArmsMeshComponent,
+			FAttachmentTransformRules::KeepRelativeTransform,
+			FName(TEXT("hand_r")));
+	}
 
 	// 에디터 미리보기 설정과 무관하게 플레이 시작 시에는 소등
 	if (Flashlight)
@@ -185,6 +248,17 @@ void AAPlayerCharacter::Tick(float DeltaTime)
 			Weapon->SetActorHiddenInGame(bBandageWeaponWasHidden);
 		}
 		BandageHiddenWeapon.Reset();
+	}
+	if (WeaponSlotBeforeHealing >= 0 && (!HealingComponent || !HealingComponent->bIsUsingItem))
+	{
+		RestoreWeaponAfterHealing();
+	}
+	if (bShowingSyringeAnimation && (!HealingComponent || !HealingComponent->bIsUsingItem))
+	{
+		bShowingSyringeAnimation = false;
+		if (SyringeArmsMeshComponent) SyringeArmsMeshComponent->SetHiddenInGame(true);
+		if (SyringeMeshComponent) SyringeMeshComponent->SetHiddenInGame(true);
+		if (FirstPersonMesh) FirstPersonMesh->SetHiddenInGame(bSyringeFirstPersonMeshWasHidden);
 	}
 
 	// 회복 아이템 사용 중 이동속도 감소 처리
@@ -535,6 +609,37 @@ bool AAPlayerCharacter::IsFlashlightOn() const
 	return Flashlight && Flashlight->IsVisible();
 }
 
+void AAPlayerCharacter::PrepareWeaponForHealing()
+{
+	if (!CombatComponent || WeaponSlotBeforeHealing >= 0)
+	{
+		return;
+	}
+
+	const int32 PreviousSlot = CombatComponent->GetCurrentWeaponSlotIndex();
+	if (PreviousSlot <= 0 || !CombatComponent->WeaponClasses.IsValidIndex(0) ||
+		!CombatComponent->WeaponClasses[0])
+	{
+		return;
+	}
+
+	CombatComponent->SwitchWeapon(0);
+	if (CombatComponent->GetCurrentWeaponSlotIndex() == 0 && CombatComponent->EquippedWeapon)
+	{
+		WeaponSlotBeforeHealing = PreviousSlot;
+	}
+}
+
+void AAPlayerCharacter::RestoreWeaponAfterHealing()
+{
+	const int32 PreviousSlot = WeaponSlotBeforeHealing;
+	WeaponSlotBeforeHealing = -1;
+	if (CombatComponent && PreviousSlot >= 0)
+	{
+		CombatComponent->SwitchWeapon(PreviousSlot);
+	}
+}
+
 void AAPlayerCharacter::DoUseBandage()
 {
 	// HealingComponent가 유효하면 붕대 사용 로직 위임
@@ -545,6 +650,7 @@ void AAPlayerCharacter::DoUseBandage()
 		if (!bWasUsingItem && HealingComponent->bIsUsingItem && CombatComponent)
 		{
 			CombatComponent->StopAim();
+			PrepareWeaponForHealing();
 		}
 		if (!bWasUsingItem && HealingComponent->bIsUsingItem && FirstPersonMesh)
 		{
@@ -577,10 +683,69 @@ void AAPlayerCharacter::DoUseBandage()
 
 void AAPlayerCharacter::DoUseSyringe()
 {
-	// HealingComponent가 유효하면 주사기 사용 로직 위임
-	if (HealingComponent)
+	if (!HealingComponent)
 	{
-		HealingComponent->UseSyringe();
+		return;
+	}
+
+	const bool bWasUsingItem = HealingComponent->bIsUsingItem;
+	HealingComponent->UseSyringe();
+	if (bWasUsingItem || !HealingComponent->bIsUsingItem)
+	{
+		return;
+	}
+
+	if (CombatComponent)
+	{
+		CombatComponent->StopAim();
+		PrepareWeaponForHealing();
+
+		if (AWeaponBase* Weapon = CombatComponent->EquippedWeapon)
+		{
+			BandageHiddenWeapon = Weapon;
+			bBandageWeaponWasHidden = Weapon->IsHidden();
+			Weapon->SetActorHiddenInGame(true);
+		}
+	}
+
+	if (FirstPersonMesh)
+	{
+		bSyringeFirstPersonMeshWasHidden = FirstPersonMesh->bHiddenInGame;
+		FirstPersonMesh->SetHiddenInGame(true);
+	}
+
+	bShowingSyringeAnimation = true;
+
+	// 캐릭터 팔 애니메이션
+	if (SyringeArmsMeshComponent && SyringeAnimation)
+	{
+		SyringeArmsMeshComponent->SetHiddenInGame(false);
+		SyringeArmsMeshComponent->PlayAnimation(SyringeAnimation, false);
+
+		if (UAnimSingleNodeInstance* Instance = SyringeArmsMeshComponent->GetSingleNodeInstance())
+		{
+			Instance->SetPlayRate(
+				SyringeAnimation->GetPlayLength() /
+				FMath::Max(HealingComponent->SyringeUseDuration, 0.01f));
+		}
+	}
+
+	// 주사기 메시 애니메이션
+	if (SyringeMeshComponent)
+	{
+		SyringeMeshComponent->SetHiddenInGame(false);
+
+		if (SyringePropAnimation)
+		{
+			SyringeMeshComponent->PlayAnimation(SyringePropAnimation, false);
+
+			if (UAnimSingleNodeInstance* Instance = SyringeMeshComponent->GetSingleNodeInstance())
+			{
+				Instance->SetPlayRate(
+					SyringePropAnimation->GetPlayLength() /
+					FMath::Max(HealingComponent->SyringeUseDuration, 0.01f));
+			}
+		}
 	}
 }
 
