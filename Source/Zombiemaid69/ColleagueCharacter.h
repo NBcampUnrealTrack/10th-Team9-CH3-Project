@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include "CoreMinimal.h"
+#include "TimerManager.h"
 #include "GameFramework/Character.h"
 #include "ColleagueCharacter.generated.h"
 
@@ -38,6 +39,19 @@ public:
 		return bWeaponEquipped;
 	}
 
+	virtual float TakeDamage(
+		float DamageAmount,
+		const FDamageEvent& DamageEvent,
+		AController* EventInstigator,
+		AActor* DamageCauser
+	)override;
+
+	UFUNCTION(BlueprintPure, Category = "Colleague|Rest")
+	bool IsResting() const
+	{
+		return bResting;
+	}
+
 protected:
 	virtual void BeginPlay() override;
 
@@ -56,7 +70,7 @@ protected:
 	float CurrentHealth = 150.0f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Colleague|Combat")
-	float AttackDamage = 50.0f;
+	float AttackDamage = 15.0f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Colleague|Combat")
 	float FireInterval = 0.8f;
@@ -71,4 +85,35 @@ protected:
 	TObjectPtr<UAnimMontage> FireMontage = nullptr;
 
 	float NextFireTime = 0.0f;
+
+	virtual void EndPlay(
+		const EEndPlayReason::Type EndPlayReason
+	) override;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Colleague|Rest",
+	meta = (ClampMin = "0.1"))
+	float RestDuration = 20.0f;
+
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Colleague|Rest")
+	bool bResting = false;
+
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Colleague|Rest")
+	bool bStandingUp = false;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Colleague|Rest")
+	TObjectPtr<UAnimMontage> RestMontage = nullptr;
+
+	FTimerHandle RestRecoveryTimerHandle;
+	FTimerHandle RestExitTimerHandle;
+
+	double RestStartTime = 0.0;
+
+	void StartRest();
+	void UpdateRestRecovery();
+	void FinishRest();
+
+	void OnRestMontageEnded(
+		UAnimMontage* Montage,
+		bool bInterrupted
+	);
 };

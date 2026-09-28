@@ -6,6 +6,7 @@
 #include "ColleagueAIController.generated.h"
 
 class AEnemy;
+class AColleagueCharacter;
 
 /** 동료 AI가 현재 수행할 수 있는 행동 상태  */
 UENUM(BlueprintType)
@@ -18,7 +19,9 @@ enum class EColleagueState : uint8
 	/** 플레이어를 따라다니며 대기하는 상태  */
 	Follow UMETA(DisplayName = "Follow"),
 	/** 전투보다 플레이어 합류를 우선하는 상태  */
-	Recall UMETA(DisplayName = "Recall")
+	Recall UMETA(DisplayName = "Recall"),
+	/** 체력을 회복하고 일어설 때까지 행동을 중지하는 상태 */
+	Rest UMETA(DisplayName = "Rest")
 };
 
 UCLASS()
@@ -98,6 +101,17 @@ protected:
 
 	/** 호출 시 플레이어에게 이동하고 도착 확인 */
 	void HandleRecallState(APawn* ControlledPawn);
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Colleague|Recall",
+		meta = (ClampMin = "100.0"))
+	float RecallTeleportDistance = 3000.0f;
+
+	double NextRecallTeleportTime = 0.0;
+
+	bool TryTeleportNearPlayer(
+		AColleagueCharacter* Colleague,
+		APawn* PlayerPawn
+	);
 
 	/** 호출 시 플레이어와 도착 거리 판정거리 값 */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Colleague|Recall",
