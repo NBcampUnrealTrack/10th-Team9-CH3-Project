@@ -28,9 +28,37 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Weapon|Stats")
 	float FireRange = 10000.0f;
 
+	/** 한 발당 위로 튀는 반동의 최소값 (Pitch, 도 단위) */
+	UPROPERTY(EditAnywhere, Category = "Weapon|Recoil", meta = (ClampMin = "0.0"))
+	float RecoilPitchMin = 0.2f;
+
+	/** 한 발당 위로 튀는 반동의 최대값 (Pitch, 도 단위) */
+	UPROPERTY(EditAnywhere, Category = "Weapon|Recoil", meta = (ClampMin = "0.0"))
+	float RecoilPitchMax = 0.4f;
+
+	/** 좌우 반동 최소값 (Yaw, 도 단위. 음수 = 왼쪽) */
+	UPROPERTY(EditAnywhere, Category = "Weapon|Recoil")
+	float RecoilYawMin = -0.15f;
+
+	/** 좌우 반동 최대값 (Yaw, 도 단위. 양수 = 오른쪽) */
+	UPROPERTY(EditAnywhere, Category = "Weapon|Recoil")
+	float RecoilYawMax = 0.15f;
+
+	/** 조준(줌) 중일 때 반동에 곱해줄 배율 (0.6 = 60%) */
+	UPROPERTY(EditAnywhere, Category = "Weapon|Recoil", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float AimRecoilMultiplier = 0.6f;
+
 	/** 발사 간격(초) - 연사 속도 제한 */
 	UPROPERTY(EditAnywhere, Category = "Weapon|Stats")
-	float FireRate = 0.15f;
+	float FireRate = 0.16f;
+
+	/** 발사 모드 전환이 가능한 무기인지 (소총만 true) */
+	UPROPERTY(EditAnywhere, Category = "Weapon|FireMode")
+	bool bCanToggleFireMode = false;
+
+	/** 현재 연사 모드인지 여부 (false면 단발) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon|FireMode")
+	bool bIsAutomatic = false;
 
 	/** 이 무기 고유의 최대 탄창 크기 (기본값, 특전 적용 전) */
 	UPROPERTY(EditAnywhere, Category = "Weapon|Stats")

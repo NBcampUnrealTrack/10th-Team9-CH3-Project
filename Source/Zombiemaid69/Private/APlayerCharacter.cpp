@@ -251,12 +251,28 @@ void AAPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 			&AAPlayerCharacter::DoSprintEnd
 		);
 
-		// 좌클릭을 누르면 DoFire 호출
+		// 좌클릭을 누르고 있는 동안 DoFire 반복 호출 (실제 간격은 FireRate가 제어)
 		EnhancedInputComponent->BindAction(
 			FireAction,
-			ETriggerEvent::Started,
+			ETriggerEvent::Triggered,
 			this,
 			&AAPlayerCharacter::DoFire
+		);
+
+		// 좌클릭을 떼면 단발 잠금 해제
+		EnhancedInputComponent->BindAction(
+			FireAction,
+			ETriggerEvent::Completed,
+			this,
+			&AAPlayerCharacter::DoStopFire
+		);
+
+		// B키: 발사 모드 전환
+		EnhancedInputComponent->BindAction(
+			ToggleFireModeAction,
+			ETriggerEvent::Started,
+			this,
+			&AAPlayerCharacter::DoToggleFireMode
 		);
 
 		// R키를 누르면 DoReload 호출
@@ -720,6 +736,25 @@ void AAPlayerCharacter::DoActivateSpecialShot()
 	if (SkillComponent)
 	{
 		SkillComponent->ActivateSpecialShot();
+	}
+}
+
+void AAPlayerCharacter::DoToggleFireMode()
+{
+	UE_LOG(LogTemp, Warning, TEXT("DoToggleFireMode() 호출됨"));
+
+
+	if (CombatComponent)
+	{
+		CombatComponent->ToggleFireMode();
+	}
+}
+
+void AAPlayerCharacter::DoStopFire()
+{
+	if (CombatComponent)
+	{
+		CombatComponent->StopFire();
 	}
 }
 

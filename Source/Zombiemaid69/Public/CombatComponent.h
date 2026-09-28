@@ -9,6 +9,9 @@ class AWeaponBase;
 /** 탄약 상태가 바뀔 때 UI(탄약 표시)에서 구독할 델리게이트 */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnAmmoChanged, int32, CurrentAmmo, int32, ReserveAmmo);
 
+/** 발사 모드(연사/단발)가 바뀔 때 UI가 구독할 델리게이트 (true = 연사) */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnFireModeChanged, bool, bIsAutomatic);
+
 //발사 성공 델리게이트
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnFireSucceeded);
 
@@ -50,6 +53,10 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "Combat|Events")
 	FOnAmmoChanged OnAmmoChanged;
 
+	/** 발사 모드가 바뀔 때 UI에 알림 */
+	UPROPERTY(BlueprintAssignable, Category = "Combat|Events")
+	FOnFireModeChanged OnFireModeChanged;
+
 	/** 실제 발사에 성공했을 때 호출 */
 	UPROPERTY(BlueprintAssignable, Category = "Combat|Events")
 	FOnFireSucceeded OnFireSucceeded;
@@ -79,6 +86,14 @@ public:
 	/** 발사 시도 (좌클릭을 누른 순간 캐릭터에서 호출) */
 	UFUNCTION(BlueprintCallable, Category = "Combat")
 	void Fire();
+
+	/** 발사 모드 전환 (B키). 전환 가능한 무기(소총)일 때만 동작 */
+	UFUNCTION(BlueprintCallable, Category = "Combat")
+	void ToggleFireMode();
+
+	/** 좌클릭을 뗐을 때 호출 (단발 잠금 해제) */
+	UFUNCTION(BlueprintCallable, Category = "Combat")
+	void StopFire();
 
 	/** 특정 슬롯 번호(0~3)의 무기로 교체하는 함수 */
 	UFUNCTION(BlueprintCallable, Category = "Combat")
@@ -116,6 +131,12 @@ protected:
 private:
 	/** 마지막으로 발사한 시점의 월드 시간 (연사속도 제한 계산용) */
 	float LastFireTime = -100.0f;
+
+	/** 이번 좌클릭에서 이미 한 발 쐈는지 (단발 모드 중복 발사 방지) */
+	bool bHasFiredThisPress = false;
+
+	/** 발사 시 반동 적용 (무기의 Min/Max 범위 안에서 랜덤) */
+	void ApplyRecoil();
 
 	/** WeaponClasses와 같은 순서로, 이미 생성된 무기 인스턴스를 저장해두는 배열 (탄약 상태를 유지하기 위해 파괴하지 않고 재사용) */
 	TArray<AWeaponBase*> WeaponInstances;

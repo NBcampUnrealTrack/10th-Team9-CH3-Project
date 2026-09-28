@@ -72,6 +72,10 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Input")
 	UInputAction* ReloadAction;
 
+	/** 발사 모드 전환 Input Action (B키) */
+	UPROPERTY(EditAnywhere, Category = "Input")
+	UInputAction* ToggleFireModeAction;
+
 	/** 수류탄 던지기 Input Action (Q키) */
 	UPROPERTY(EditAnywhere, Category = "Input")
 	UInputAction* ThrowGrenadeAction;
@@ -211,6 +215,14 @@ protected:
 	/** R키를 눌렀을 때 호출 (재장전) */
 	UFUNCTION(BlueprintCallable, Category = "Combat")
 	virtual void DoReload();
+
+	/** B키를 눌렀을 때 호출 (연사/단발 전환) */
+	UFUNCTION(BlueprintCallable, Category = "Combat")
+	virtual void DoToggleFireMode();
+
+	/** 좌클릭을 뗐을 때 호출 (단발 잠금 해제) */
+	UFUNCTION(BlueprintCallable, Category = "Combat")
+	virtual void DoStopFire();
 
 	/** Q키를 눌렀을 때 호출 (수류탄 던지기) */
 	UFUNCTION(BlueprintCallable, Category = "Skill")

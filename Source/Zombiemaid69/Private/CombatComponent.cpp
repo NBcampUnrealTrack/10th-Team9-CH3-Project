@@ -4,6 +4,7 @@
 #include "WeaponBase.h"
 #include "Kismet/GameplayStatics.h"
 #include "GameFramework/Character.h"
+#include "GameFramework/PlayerController.h"
 #include "Camera/CameraComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "DrawDebugHelpers.h"
@@ -135,6 +136,12 @@ void UCombatComponent::Fire()
 		return;
 	}
 
+	// 단발 모드인데 이번 클릭에서 이미 쐈다면 차단
+	if (!EquippedWeapon->bIsAutomatic && bHasFiredThisPress)
+	{
+		return;
+	}
+
 	// 컴포넌트 소유 캐릭터 확인
 	AAPlayerCharacter* OwnerCharacter =
 		Cast<AAPlayerCharacter>(GetOwner());
@@ -185,6 +192,16 @@ void UCombatComponent::Fire()
 
 	// 데미지/이벤트 콜백에서 무기가 교체되더라도 다른 무기의 탄약을 소모하지 않음.
 	PerformHitTrace();
+
+	// 발사 반동 적용
+	ApplyRecoil();
+
+	// 단발 모드라면 이번 클릭에서 발사했음을 기록
+	// (PerformHitTrace 중 무기가 교체됐을 수 있으므로 FiredWeapon 기준으로 확인)
+	if (FiredWeapon.IsValid() && !FiredWeapon->bIsAutomatic)
+	{
+		bHasFiredThisPress = true;
+	}
 
 	if (FiredWeapon.IsValid() && EquippedWeapon == FiredWeapon.Get())
 		OnAmmoChanged.Broadcast(ClipAfterShot, ReserveAfterShot);
@@ -460,4 +477,66 @@ void UCombatComponent::CancelReload()
 	ReloadingWeapon.Reset();
 	bIsReloading = false;
 	OnReloadCancelled.Broadcast();
+}
+
+void UCombatComponent::ToggleFireMode()
+{
+	UE_LOG(LogTemp, Warning, TEXT("ToggleFireMode() 호출됨"));
+
+	if (!EquippedWeapon)
+	{
+		UE_LOG(LogTemp, Error, TEXT("ToggleFireMode() 실패: EquippedWeapon이 nullptr"));
+		return;
+	}
+
+	// 장착 무기가 없거나 전환 불가 무기(권총/샷건/스나이퍼)면 무시
+	if (!EquippedWeapon->bCanToggleFireMode)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("ToggleFireMode() 무시: %s 는 bCanToggleFireMode가 false"), *EquippedWeapon->GetName());
+		return;
+	}
+
+	EquippedWeapon->bIsAutomatic = !EquippedWeapon->bIsAutomatic;
+	bHasFiredThisPress = false;
+
+	OnFireModeChanged.Broadcast(EquippedWeapon->bIsAutomatic);
+
+	UE_LOG(LogTemp, Warning, TEXT("발사 모드 변경: %s"), EquippedWeapon->bIsAutomatic ? TEXT("연사") : TEXT("단발"));
+}
+
+void UCombatComponent::StopFire()
+{
+	bHasFiredThisPress = false;
+}
+
+void UCombatComponent::ApplyRecoil()
+{
+	if (!EquippedWeapon)
+	{
+		return;
+	}
+
+	APawn* OwnerPawn = Cast<APawn>(GetOwner());
+	APlayerController* PC = OwnerPawn ? Cast<APlayerController>(OwnerPawn->GetController()) : nullptr;
+	if (!PC)
+	{
+		return;
+	}
+
+	// 에디터에서 Min/Max를 반대로 넣어도 안전하도록 정렬
+	const float PitchLow = FMath::Min(EquippedWeapon->RecoilPitchMin, EquippedWeapon->RecoilPitchMax);
+	const float PitchHigh = FMath::Max(EquippedWeapon->RecoilPitchMin, EquippedWeapon->RecoilPitchMax);
+	const float YawLow = FMath::Min(EquippedWeapon->RecoilYawMin, EquippedWeapon->RecoilYawMax);
+	const float YawHigh = FMath::Max(EquippedWeapon->RecoilYawMin, EquippedWeapon->RecoilYawMax);
+
+	// 조준 중이면 반동을 줄여줌
+	const float Multiplier = bIsAiming ? EquippedWeapon->AimRecoilMultiplier : 1.0f;
+
+	// 범위 안에서 매 발 랜덤 값 결정
+	const float PitchKick = FMath::FRandRange(PitchLow, PitchHigh) * Multiplier;
+	const float YawKick = FMath::FRandRange(YawLow, YawHigh) * Multiplier;
+
+	// 컨트롤러 회전에 반영만 하고 되돌리지 않음 (Pitch 입력은 음수가 위쪽)
+	PC->AddPitchInput(-PitchKick);
+	PC->AddYawInput(YawKick);
 }
