@@ -19,6 +19,7 @@ class UPrimitiveComponent;
 
 class UAudioComponent;
 class USoundBase;
+class UNiagaraSystem;
 
 /** 실제 체력 변경과 공격자 정보 전달 */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_FiveParams(
@@ -159,6 +160,9 @@ protected:
 	//피격 데미지 숫자 Actor
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy|Damage")
 	TSubclassOf<AActor> DamageNumberClass;
+	//피격 피 이펙트
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy|Damage")
+	TObjectPtr<UNiagaraSystem> HitEffect;
 
 	//사운드
 	//반복 사운드 Component

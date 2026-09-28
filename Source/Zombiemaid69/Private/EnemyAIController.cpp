@@ -508,7 +508,7 @@ void AEnemyAIController::StartStun()
 		StunTimer,
 		this,
 		&AEnemyAIController::EndStun,
-		0.2f,
+		0.08f,
 		false
 	);
 }
