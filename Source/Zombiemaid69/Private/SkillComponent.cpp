@@ -4,6 +4,16 @@
 #include "Kismet/GameplayStatics.h"
 #include "GameFramework/Character.h"
 #include "Camera/CameraComponent.h"
+#include "APlayerCharacter.h"
+#include "CombatComponent.h"
+#include "StatsComponent.h"
+#include "WeaponBase.h"
+#include "Components/SceneComponent.h"
+#include "NiagaraComponent.h"
+#include "NiagaraFunctionLibrary.h"
+#include "NiagaraSystem.h"
+#include "Sound/SoundBase.h"
+#include "TimerManager.h"
 
 USkillComponent::USkillComponent()
 {
@@ -19,16 +29,53 @@ void USkillComponent::BeginPlay()
 	bIsSpecialShotReady = true;
 }
 
+void USkillComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	if (GetWorld())
+	{
+		GetWorld()->GetTimerManager().ClearTimer(CooldownUpdateTimerHandle);
+		GetWorld()->GetTimerManager().ClearTimer(GrenadeCooldownTimerHandle);
+	}
+	Super::EndPlay(EndPlayReason);
+}
+
+bool USkillComponent::IsSpecialShotWeaponEquipped() const
+{
+	const AActor* OwnerActor = GetOwner();
+	const UCombatComponent* Combat = IsValid(OwnerActor)
+		? OwnerActor->FindComponentByClass<UCombatComponent>() : nullptr;
+	return SpecialShotWeaponClass && Combat && IsValid(Combat->EquippedWeapon)
+		&& Combat->EquippedWeapon->IsA(SpecialShotWeaponClass.Get());
+}
+
+bool USkillComponent::CanUseSpecialShot() const
+{
+	if (!GetWorld() || !bIsSpecialShotReady || !IsSpecialShotWeaponEquipped()) return false;
+	const AAPlayerCharacter* Player = Cast<AAPlayerCharacter>(GetOwner());
+	if (!IsValid(Player) || !IsValid(Player->GetFirstPersonCameraComponent())) return false;
+	const UStatsComponent* Stats = Player->GetStatsComponent();
+	return (!Stats || !Stats->bIsDead) && FMath::IsFinite(SpecialShotRange) && SpecialShotRange > 0.0f
+		&& FMath::IsFinite(SpecialShotCooldown) && SpecialShotCooldown > 0.0f
+		&& FMath::IsFinite(SpecialShotDamage) && SpecialShotDamage >= 0.0f;
+}
+
 void USkillComponent::ActivateSpecialShot()
 {
 	// 아직 쿨타임 중이면 사용 불가
-	if (!bIsSpecialShotReady)
+	if (!CanUseSpecialShot())
 	{
 		return;
 	}
 
 	// 실제 히트 판정 및 고정 데미지 적용
-	PerformSpecialShotTrace();
+	// 데미지 콜백 안에서 재진입하더라도 중복 발사를 막음. 실패 시 쿨타임 미소비.
+	bIsSpecialShotReady = false;
+	if (!PerformSpecialShotTrace())
+	{
+		bIsSpecialShotReady = true;
+		return;
+	}
+	if (!IsValid(GetOwner()) || !GetWorld()) return;
 
 	// 사용 시점 기록
 	LastActivationTime = GetWorld()->GetTimeSeconds();
@@ -37,7 +84,7 @@ void USkillComponent::ActivateSpecialShot()
 	bIsSpecialShotReady = false;
 	OnSkillReadyChanged.Broadcast(false);
 
-	// TODO: 특수탄 발사 사운드/이펙트 재생 코드 추가 예정
+	// 쿨타임은 이 컴포넌트에 유지하므로 무기 교체로 초기화되지 않음.
 
 	// 쿨타임 진행 상황을 UI에 주기적으로 알리기 위한 타이머 시작 (0.05초마다 갱신, 부드러운 UI 표시용)
 	GetWorld()->GetTimerManager().SetTimer(
@@ -89,25 +136,15 @@ float USkillComponent::GetCooldownPercent() const
 	return 1.0f - (GetRemainingCooldown() / SpecialShotCooldown);
 }
 
-void USkillComponent::PerformSpecialShotTrace()
+bool USkillComponent::PerformSpecialShotTrace()
 {
-	AActor* OwnerActor = GetOwner();
-	if (!OwnerActor)
-	{
-		return;
-	}
-
-	ACharacter* OwnerCharacter = Cast<ACharacter>(OwnerActor);
-	if (!OwnerCharacter)
-	{
-		return;
-	}
-
-	UCameraComponent* CameraComp = OwnerCharacter->FindComponentByClass<UCameraComponent>();
-	if (!CameraComp)
-	{
-		return;
-	}
+	AAPlayerCharacter* OwnerCharacter = Cast<AAPlayerCharacter>(GetOwner());
+	if (!IsValid(OwnerCharacter) || !GetWorld()) return false;
+	UCombatComponent* Combat = OwnerCharacter->GetCombatComponent();
+	AWeaponBase* Weapon = Combat ? Combat->EquippedWeapon : nullptr;
+	UCameraComponent* CameraComp = OwnerCharacter->GetFirstPersonCameraComponent();
+	if (!IsValid(Weapon) || !IsValid(CameraComp) || !IsSpecialShotWeaponEquipped()) return false;
+	AActor* OwnerActor = OwnerCharacter;
 
 	// 트레이스 시작/방향/종료 지점 계산 (일반 사격과 동일하게 카메라 정면 기준)
 	const FVector StartLocation = CameraComp->GetComponentLocation();
@@ -117,6 +154,7 @@ void USkillComponent::PerformSpecialShotTrace()
 	FHitResult HitResult;
 	FCollisionQueryParams QueryParams;
 	QueryParams.AddIgnoredActor(OwnerActor);
+	QueryParams.AddIgnoredActor(Weapon);
 
 	const bool bHit = GetWorld()->LineTraceSingleByChannel(
 		HitResult,
@@ -126,7 +164,13 @@ void USkillComponent::PerformSpecialShotTrace()
 		QueryParams
 	);
 
-	if (bHit && HitResult.GetActor())
+	// 데미지 처리로 대상이 사라져도 사용할 위치/법선/총구를 먼저 고정.
+	const FVector EndPoint = bHit ? HitResult.ImpactPoint : EndLocation;
+	const FTransform MuzzleTransform = IsValid(Weapon->MuzzlePoint)
+		? Weapon->MuzzlePoint->GetComponentTransform() : CameraComp->GetComponentTransform();
+	PlaySpecialShotFeedback(MuzzleTransform, EndPoint, bHit, HitResult.ImpactNormal);
+
+	if (bHit && IsValid(HitResult.GetActor()))
 	{
 		// 무기와 무관하게 항상 SpecialShotDamage 고정값으로 데미지 적용
 		UGameplayStatics::ApplyPointDamage(
@@ -139,12 +183,47 @@ void USkillComponent::PerformSpecialShotTrace()
 			nullptr
 		);
 
-		// TODO: 특수탄 피격 이펙트 재생 코드 추가 예정
+	}
+	return true; // 빗나가도 유효한 발사이므로 쿨타임 소비.
+}
+
+void USkillComponent::PlaySpecialShotFeedback(const FTransform& MuzzleTransform,
+	const FVector& EndPoint, bool bHit, const FVector& ImpactNormal)
+{
+	if (GetNetMode() == NM_DedicatedServer) return;
+	const FVector Start = MuzzleTransform.GetLocation();
+	const float Volume = FMath::Clamp(SpecialShotVolume, 0.0f, 2.0f);
+	if (SpecialShotFireSound)
+		UGameplayStatics::PlaySoundAtLocation(this, SpecialShotFireSound, Start, Volume,
+			1.0f, 0.0f, SpecialShotAttenuation);
+	if (SpecialShotMuzzleEffect)
+		UNiagaraFunctionLibrary::SpawnSystemAtLocation(this, SpecialShotMuzzleEffect,
+			Start, MuzzleTransform.Rotator());
+	if (SpecialShotTracerEffect)
+	{
+		UNiagaraComponent* Tracer = UNiagaraFunctionLibrary::SpawnSystemAtLocation(this,
+			SpecialShotTracerEffect, Start, FRotator::ZeroRotator, FVector::OneVector, true, false);
+		if (Tracer)
+		{
+			Tracer->SetVariablePosition(TEXT("User.Start"), Start);
+			Tracer->SetVariablePosition(TEXT("User.End"), EndPoint);
+			Tracer->Activate(true);
+		}
+	}
+	if (bHit)
+	{
+		if (SpecialShotImpactEffect)
+			UNiagaraFunctionLibrary::SpawnSystemAtLocation(this, SpecialShotImpactEffect,
+				EndPoint + ImpactNormal * 1.0f, ImpactNormal.Rotation());
+		if (SpecialShotImpactSound)
+			UGameplayStatics::PlaySoundAtLocation(this, SpecialShotImpactSound, EndPoint,
+				Volume * 0.6f, 1.0f, 0.0f, SpecialShotAttenuation);
 	}
 }
 
 void USkillComponent::ThrowGrenade()
 {
+	if (!GetWorld()) return;
 	UE_LOG(LogTemp, Warning, TEXT("ThrowGrenade() 호출됨"));
 
 	// 아직 쿨타임 중이면 사용 불가
@@ -200,7 +279,10 @@ void USkillComponent::ThrowGrenade()
 	else
 	{
 		UE_LOG(LogTemp, Error, TEXT("수류탄 스폰 실패"));
+		return;
 	}
+	if (GrenadeThrowSound && GetNetMode() != NM_DedicatedServer)
+		UGameplayStatics::PlaySoundAtLocation(this, GrenadeThrowSound, SpawnLocation, 0.5f);
 
 	// TODO: 수류탄 던지는 팔 애니메이션(몽타주) 재생 코드 추가 예정
 
