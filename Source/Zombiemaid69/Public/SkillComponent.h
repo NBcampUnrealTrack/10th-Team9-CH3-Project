@@ -23,7 +23,7 @@ public:
 
 	/** 특수탄이 입히는 고정 데미지량 (장착 무기의 WeaponDamage와 무관하게 항상 이 값으로 적용) */
 	UPROPERTY(EditAnywhere, Category = "Skill|SpecialShot")
-	float SpecialShotDamage = 100.0f;
+	float SpecialShotDamage = 150.0f;
 
 	/** 특수탄의 사거리 */
 	UPROPERTY(EditAnywhere, Category = "Skill|SpecialShot")
@@ -31,7 +31,7 @@ public:
 
 	/** 특수탄 스킬의 쿨타임(초) */
 	UPROPERTY(EditAnywhere, Category = "Skill|SpecialShot")
-	float SpecialShotCooldown = 1.0f;
+	float SpecialShotCooldown = 5.0f;
 
 	/** 현재 스킬을 사용할 수 있는 상태인지 (쿨타임이 끝났는지) */
 	UPROPERTY(BlueprintReadOnly, Category = "Skill|SpecialShot")
