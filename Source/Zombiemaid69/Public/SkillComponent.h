@@ -5,6 +5,10 @@
 #include "SkillComponent.generated.h"
 
 class AGrenadeProjectile;
+class AWeaponBase;
+class UNiagaraSystem;
+class USoundBase;
+class USoundAttenuation;
 
 /** 쿨타임이 갱신될 때마다(0.05초 간격) UI가 구독할 델리게이트 */
 /** 남은 시간과 전체 쿨타임을 함께 전달해서, UI에서 비율 계산에 사용 가능 */
@@ -20,6 +24,39 @@ class ZOMBIEMAID69_API USkillComponent : public UActorComponent
 
 public:
 	USkillComponent();
+
+	/** BP_Rifle 지정. 미지정이면 사용 불가. 슬롯 번호/이름에 의존하지 않음. */
+	UPROPERTY(EditDefaultsOnly, Category = "Skill|SpecialShot")
+	TSubclassOf<AWeaponBase> SpecialShotWeaponClass;
+
+	UFUNCTION(BlueprintPure, Category = "Skill|SpecialShot")
+	bool IsSpecialShotWeaponEquipped() const;
+
+	/** UI와 입력 모두 이 조건 사용. bIsSpecialShotReady는 쿨타임만 의미. */
+	UFUNCTION(BlueprintPure, Category = "Skill|SpecialShot")
+	bool CanUseSpecialShot() const;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Skill|SpecialShot|Feedback")
+	TObjectPtr<USoundBase> SpecialShotFireSound;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Skill|SpecialShot|Feedback")
+	TObjectPtr<USoundBase> SpecialShotImpactSound;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Skill|SpecialShot|Feedback")
+	TObjectPtr<USoundAttenuation> SpecialShotAttenuation;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Skill|SpecialShot|Feedback")
+	TObjectPtr<UNiagaraSystem> SpecialShotMuzzleEffect;
+
+	/** World-space Position 파라미터 User.Start / User.End, 일회성 시스템. */
+	UPROPERTY(EditDefaultsOnly, Category = "Skill|SpecialShot|Feedback")
+	TObjectPtr<UNiagaraSystem> SpecialShotTracerEffect;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Skill|SpecialShot|Feedback")
+	TObjectPtr<UNiagaraSystem> SpecialShotImpactEffect;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Skill|SpecialShot|Feedback", meta = (ClampMin = "0.0", ClampMax = "2.0"))
+	float SpecialShotVolume = 0.75f;
 
 	/** 특수탄이 입히는 고정 데미지량 (장착 무기의 WeaponDamage와 무관하게 항상 이 값으로 적용) */
 	UPROPERTY(EditAnywhere, Category = "Skill|SpecialShot")
@@ -76,6 +113,9 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Skill|Grenade")
 	float GrenadeThrowSpeed = 1500.0f;
 
+	UPROPERTY(EditDefaultsOnly, Category = "Skill|Grenade|Feedback")
+	TObjectPtr<USoundBase> GrenadeThrowSound;
+
 	/** 현재 수류탄을 사용할 수 있는 상태인지 (쿨타임이 끝났는지) */
 	UPROPERTY(BlueprintReadOnly, Category = "Skill|Grenade")
 	bool bIsGrenadeReady = true;
@@ -90,6 +130,7 @@ public:
 
 protected:
 	virtual void BeginPlay() override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 private:
 	/** 스킬을 사용한 시점의 월드 시간 (쿨타임 계산 기준) */
@@ -99,7 +140,9 @@ private:
 	FTimerHandle CooldownUpdateTimerHandle;
 
 	/** 실제 라인트레이스로 대상을 맞추고 고정 데미지를 적용하는 내부 함수 */
-	void PerformSpecialShotTrace();
+	bool PerformSpecialShotTrace();
+	void PlaySpecialShotFeedback(const FTransform& MuzzleTransform, const FVector& EndPoint,
+		bool bHit, const FVector& ImpactNormal);
 
 	/** 쿨타임 갱신 타이머가 매 틱마다 호출하는 콜백 함수 */
 	void UpdateCooldownTick();

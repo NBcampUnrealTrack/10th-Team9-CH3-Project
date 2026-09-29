@@ -7,6 +7,9 @@
 class USphereComponent;
 class UProjectileMovementComponent;
 class UStaticMeshComponent;
+class UNiagaraSystem;
+class USoundBase;
+class USoundAttenuation;
 
 UCLASS()
 class ZOMBIEMAID69_API AGrenadeProjectile : public AActor
@@ -40,16 +43,43 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Grenade")
 	float FuseTime = 2.5f;
 
+	UPROPERTY(EditDefaultsOnly, Category = "Grenade|Feedback")
+	TObjectPtr<UNiagaraSystem> ExplosionEffect;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Grenade|Feedback")
+	TObjectPtr<USoundBase> ExplosionSound;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Grenade|Feedback")
+	TObjectPtr<USoundBase> BounceSound;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Grenade|Feedback")
+	TObjectPtr<USoundAttenuation> ExplosionAttenuation;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Grenade|Feedback")
+	TObjectPtr<USoundAttenuation> BounceAttenuation;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Grenade|Feedback", meta = (ClampMin = "0.0", ClampMax = "2.0"))
+	float ExplosionVolume = 0.85f;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Grenade|Feedback", meta = (ClampMin = "0.05"))
+	float BounceSoundInterval = 0.12f;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Grenade|Feedback", meta = (ClampMin = "0.0"))
+	float MinBounceSoundSpeed = 100.0f;
+
 protected:
 	virtual void BeginPlay() override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 	/** 벽/바닥 등에 물리적으로 부딪혔을 때 호출되는 콜백 (튕기는 효과를 위해 폭발시키지 않음) */
 	UFUNCTION()
-	void OnGrenadeHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit);
+	void OnGrenadeBounce(const FHitResult& Hit, const FVector& ImpactVelocity);
 
 private:
 	/** 신관(퓨즈) 타이머 핸들 */
 	FTimerHandle FuseTimerHandle;
+	bool bHasExploded = false;
+	float LastBounceSoundTime = -1000.0f;
 
 	/** 실제 폭발 처리를 수행하는 함수 */
 	void Explode();

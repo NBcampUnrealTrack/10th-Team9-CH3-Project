@@ -3,6 +3,10 @@
 #include "Components/StaticMeshComponent.h"
 #include "GameFramework/ProjectileMovementComponent.h"
 #include "Kismet/GameplayStatics.h"
+#include "NiagaraFunctionLibrary.h"
+#include "NiagaraSystem.h"
+#include "Sound/SoundBase.h"
+#include "TimerManager.h"
 
 AGrenadeProjectile::AGrenadeProjectile()
 {
@@ -13,9 +17,6 @@ AGrenadeProjectile::AGrenadeProjectile()
 	CollisionComponent->InitSphereRadius(10.0f);
 	CollisionComponent->SetCollisionProfileName(TEXT("BlockAllDynamic"));
 	RootComponent = CollisionComponent;
-
-	// 물리적으로 부딪혔을 때 튕기는 효과를 위한 콜백 등록
-	CollisionComponent->OnComponentHit.AddDynamic(this, &AGrenadeProjectile::OnGrenadeHit);
 
 	// 수류탄 외형 메시 (콜리전에 부착, 자체 충돌은 없음)
 	GrenadeMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("GrenadeMesh"));
@@ -31,6 +32,7 @@ AGrenadeProjectile::AGrenadeProjectile()
 	ProjectileMovement->bShouldBounce = true;      // 바닥/벽에 튕기도록 설정
 	ProjectileMovement->Bounciness = 0.4f;         // 튕기는 정도 (0~1)
 	ProjectileMovement->ProjectileGravityScale = 1.0f; // 중력 영향을 받아 포물선을 그림
+	ProjectileMovement->OnProjectileBounce.AddUniqueDynamic(this, &AGrenadeProjectile::OnGrenadeBounce);
 
 	// 수류탄은 3초 후 자동으로 사라지도록 안전장치 (혹시 신관이 실패해도 영구히 남지 않게)
 	InitialLifeSpan = 10.0f;
@@ -52,18 +54,40 @@ void AGrenadeProjectile::BeginPlay()
 	// TODO: 수류탄이 굴러가는 소리, 핀 뽑는 사운드 재생 코드 추가 예정
 }
 
-void AGrenadeProjectile::OnGrenadeHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
+void AGrenadeProjectile::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
-	// 벽/바닥에 부딪히면 튕기기만 하고, 여기서는 폭발시키지 않음
-	// (즉시 폭발형 수류탄으로 만들고 싶다면 여기서 Explode()를 호출하면 됨)
+	if (GetWorld()) GetWorld()->GetTimerManager().ClearTimer(FuseTimerHandle);
+	Super::EndPlay(EndPlayReason);
+}
 
-	// TODO: 벽에 부딪히는 소리(통통 튀는 금속음) 재생 코드 추가 예정
+void AGrenadeProjectile::OnGrenadeBounce(const FHitResult& Hit, const FVector& ImpactVelocity)
+{
+	if (bHasExploded || !GetWorld() || !BounceSound || GetNetMode() == NM_DedicatedServer) return;
+	const float Speed = FMath::Abs(FVector::DotProduct(ImpactVelocity, Hit.ImpactNormal));
+	const float Now = GetWorld()->GetTimeSeconds();
+	if (Speed < MinBounceSoundSpeed || Now - LastBounceSoundTime < BounceSoundInterval) return;
+	LastBounceSoundTime = Now;
+	UGameplayStatics::PlaySoundAtLocation(this, BounceSound, Hit.ImpactPoint,
+		FMath::Clamp(Speed / 1200.0f, 0.15f, 0.65f), 1.0f, 0.0f, BounceAttenuation);
 }
 
 void AGrenadeProjectile::Explode()
 {
+	if (bHasExploded || !GetWorld()) return;
+	bHasExploded = true;
+	GetWorld()->GetTimerManager().ClearTimer(FuseTimerHandle);
+	const FVector ExplosionLocation = GetActorLocation();
+	if (GetNetMode() != NM_DedicatedServer)
+	{
+		// 액터에 부착하지 않아 Destroy 이후에도 일회성 연출/잔향이 끝까지 재생됨.
+		if (ExplosionSound)
+			UGameplayStatics::PlaySoundAtLocation(this, ExplosionSound, ExplosionLocation,
+				FMath::Clamp(ExplosionVolume, 0.0f, 2.0f), 1.0f, 0.0f, ExplosionAttenuation);
+		if (ExplosionEffect)
+			UNiagaraFunctionLibrary::SpawnSystemAtLocation(this, ExplosionEffect, ExplosionLocation);
+	}
 	// 폭발 지점을 기준으로 범위 안의 모든 액터에게 데미지 적용
-	// 언리얼 표준 광역 데미지 함수: 중심에서 멀수록 데미지가 선형으로 감쇄됨
+	// 기존 전체 피해 설정 유지. 연출 추가와 피해 밸런스를 분리.
 	TArray<AActor*> IgnoreActors;
 	IgnoreActors.Add(this);
 
@@ -76,10 +100,10 @@ void AGrenadeProjectile::Explode()
 		IgnoreActors,               // 데미지에서 제외할 액터 (수류탄 자기 자신)
 		this,                       // 데미지 유발 액터
 		GetInstigatorController(),  // 데미지를 가한 주체의 컨트롤러
-		true                        // 장애물에 막히면 데미지가 차단되는지 여부 (bDoFullDamage=false와 반대 개념)
+		true                        // 기존 bDoFullDamage=true 유지. 거리 감쇠/벽 판정 밸런스는 변경하지 않음.
 	);
 
-	// TODO: 폭발 이펙트(나이아가라 파티클), 폭발음, 카메라 흔들림 재생 코드 추가 예정
+	// 카메라 흔들림과 게임플레이 반동은 이번 초안에서 변경하지 않음.
 
 	// 수류탄 액터 제거
 	Destroy();
